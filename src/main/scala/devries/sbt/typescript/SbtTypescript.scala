@@ -25,7 +25,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     val typescript = TaskKey[Seq[File]]("typescript", "Run Typescript compiler")
 
     val projectFile = SettingKey[File]("typescript-projectfile",
-      "The location of the tsconfig.json  Default: <basedire>/tsconfig.json")
+      "The location of the tsconfig.json  Default: <basedir>/tsconfig.json")
     val getTsConfig = TaskKey[JsObject]("get-tsconfig", "parses the tsconfig.json file")
   }
 
