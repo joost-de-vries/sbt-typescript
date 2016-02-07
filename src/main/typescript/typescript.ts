@@ -180,7 +180,7 @@ module st {
         });
         return [inputFiles, outputFiles]
     }
-    
+
     function replaceFileExtension(file:string, ext:string) {
         let oldExt = path.extname(file);
         return file.substring(0, file.length - oldExt.length) + ext;
