@@ -1,4 +1,5 @@
 /* global process, require */
+// inspired by https://github.com/ArpNetworking/sbt-typescript/blob/master/src/main/resources/typescriptc.js
 import {Program,Diagnostic,SourceFile,CompilerOptions,DiagnosticMessageChain,DiagnosticCategory} from 'typescript'
 
 module st {
@@ -100,7 +101,7 @@ module st {
         console.log("\u0010" + JSON.stringify(compileResult));
     }
 
-    function determineOutFile(outFile, options):string {
+    function determineOutFile(outFile, options:CompilerOptions):string {
         if (options.outFile) {
             logger.debug("single outFile")
             return options.outFile
