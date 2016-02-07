@@ -1,4 +1,4 @@
-package devries.sbt.typescript
+package name.devries.sbt.typescript
 
 import com.typesafe.sbt.jse.JsEngineImport.JsEngineKeys
 import com.typesafe.sbt.jse.SbtJsTask

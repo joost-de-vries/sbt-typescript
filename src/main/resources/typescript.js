@@ -50,7 +50,6 @@ var st;
         var opt = args.options;
         opt.rootDir = rootDir;
         opt.outDir = args.target;
-        logger.debug("received sbttypescript options " + JSON.stringify(options));
         var confResult = typescript.parseConfigFileTextToJson(options.tsconfigFilename, JSON.stringify(options.tsconfig));
         if (confResult.error)
             problems.push(parseDiagnostic(confResult.error));
@@ -60,7 +59,6 @@ var st;
             var compilerOptions = confResult.config.compilerOptions;
             var compilerHost = typescript.createCompilerHost(compilerOptions);
             var program = typescript.createProgram(inputFiles, compilerOptions, compilerHost);
-            logger.debug("compiler created");
             problems.push.apply(problems, findGlobalProblems(program));
             var emitOutput = program.emit();
             problems.push.apply(problems, toProblems(emitOutput.diagnostics));
@@ -72,7 +70,6 @@ var st;
             results: results,
             problems: problems
         };
-        logger.debug("output: " + JSON.stringify(output));
         return output;
     }
     function compileDone(compileResult) {
@@ -93,10 +90,7 @@ var st;
             if (index === -1) {
                 logger.debug("did not find source file " + sourceFile.fileName + " in list compile list, assuming library or dependency and skipping output");
                 return {};
-                ;
             }
-            logger.debug("examining " + sourceFile.fileName);
-            logger.debug("looking for deps");
             var deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(function (f) { return f.fileName; }));
             var outputFile = determineOutFile(outputFiles[index], compilerOptions);
             var filesWritten = [outputFile];
@@ -160,7 +154,6 @@ var st;
         }
     }
     function findGlobalProblems(program) {
-        logger.debug("looking for global diagnostics");
         var syntacticDiagnostics = program.getSyntacticDiagnostics();
         if (syntacticDiagnostics.length === 0) {
             var globalDiagnostics = program.getGlobalDiagnostics();

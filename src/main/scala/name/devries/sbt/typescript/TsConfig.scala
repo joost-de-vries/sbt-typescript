@@ -1,5 +1,4 @@
-package devries.sbt.typescript
-
+package name.devries.sbt.typescript
 
 case class CompilerOptions(module:Option[String],
                            outFile:Option[String],

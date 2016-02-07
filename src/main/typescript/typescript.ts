@@ -59,8 +59,6 @@ module st {
         opt.rootDir = rootDir;
         opt.outDir = args.target;
 
-        logger.debug("received sbttypescript options " + JSON.stringify(options));
-
         const confResult = typescript.parseConfigFileTextToJson(options.tsconfigFilename,JSON.stringify(options.tsconfig));
         if(confResult.error) problems.push(parseDiagnostic(confResult.error))
 
@@ -71,9 +69,6 @@ module st {
             const compilerOptions:CompilerOptions = confResult.config.compilerOptions
             const compilerHost = typescript.createCompilerHost(compilerOptions);
             const program:Program = typescript.createProgram(inputFiles, compilerOptions, compilerHost);
-
-
-            logger.debug("compiler created");
 
             problems.push(...findGlobalProblems(program))
 
@@ -91,7 +86,6 @@ module st {
             results: results,
             problems: problems
         };
-        logger.debug("output: " + JSON.stringify(output));
         return output;
     }
 
@@ -118,10 +112,7 @@ module st {
                 return <Option<CompilationFileResult>>{
                     //none
                 };
-                ;
             }
-            logger.debug("examining " + sourceFile.fileName);
-            logger.debug("looking for deps");
 
             let deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(f => f.fileName));
 
@@ -232,7 +223,6 @@ module st {
     }
 
     function findGlobalProblems(program:Program):Problem[] {
-        logger.debug("looking for global diagnostics");
         let syntacticDiagnostics = program.getSyntacticDiagnostics();
         if (syntacticDiagnostics.length === 0) {
             let globalDiagnostics = program.getGlobalDiagnostics();
@@ -263,7 +253,6 @@ module st {
             lineText = d.file.text.substring(lineStart, lineEnd);
             fileName = d.file.fileName;
         }
-
 
         let problem = <Problem>{
             lineNumber: lineCol.line,
