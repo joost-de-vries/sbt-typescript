@@ -48,7 +48,7 @@ module st {
     const compileResult = compile(args.sourceFileMappings,sbtTypescriptOpts)
     compileDone(compileResult)
 
-    function compile(sourceMaps, options:SbtTypescriptOptions):CompilationResult {
+    function compile(sourceMaps:string[][], options:SbtTypescriptOptions):CompilationResult {
         const rootDir = calculateRootDir(sourceMaps);
         const problems:Problem[] = []
 
