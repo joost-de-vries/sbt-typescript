@@ -140,28 +140,6 @@ var st;
         });
         return [inputFiles, outputFiles];
     }
-    function createCompilerxSettings(options) {
-        typescript.parseConfigFileTextToJson();
-        logger.debug("creating compiler settings");
-        var compSettings = new typescript.getDefaultCompilerOptions();
-        logger.debug("instantiated");
-        compSettings.declaration = options.declaration;
-        compSettings.sourceMap = options.sourceMap;
-        compSettings.sourceRoot = options.sourceRoot;
-        compSettings.mapRoot = options.mapRoot;
-        compSettings.experimentalDecorators = options.experimentalDecorators;
-        compSettings.emitDecoratorMetadata = options.emitDecoratorMetadata;
-        compSettings.moduleResolution = typescript.ModuleResolutionKind[options.moduleResolutionKind];
-        compSettings.module = typescript.ModuleKind[options.moduleKind];
-        compSettings.target = typescript.ScriptTarget[options.target];
-        compSettings.jsx = typescript.JsxEmit[options.jsx];
-        compSettings.outFile = options.outFile;
-        compSettings.outDir = options.outDir;
-        compSettings.removeComments = options.removeComments;
-        compSettings.rootDir = options.rootDir;
-        logger.debug("settings created");
-        return compSettings;
-    }
     function replaceFileExtension(file, ext) {
         var oldExt = path.extname(file);
         return file.substring(0, file.length - oldExt.length) + ext;
