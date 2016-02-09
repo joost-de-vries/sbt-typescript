@@ -1,7 +1,7 @@
 sbtPlugin := true
 organization := "name.de-vries"
 name := "sbt-typescript"
-version := "0.1"
+version := "0.2.0"
 
 homepage := Some(url("https://github.com/joost-de-vries/sbt-typescript"))
 licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
@@ -10,15 +10,14 @@ scalaVersion := "2.10.4"
 scalacOptions += "-feature"
 
 libraryDependencies ++= Seq(
-  "org.webjars.npm" % "typescript" % "1.7.5",
+  "org.webjars.npm" % "typescript" % "1.8.0",
   "com.typesafe" % "jstranspiler" % "1.0.0"
 )
 
 resolvers ++= Seq(
-  "Typesafe Releases Repository" at "http://repo.typesafe.com/typesafe/releases/",
-  Resolver.url("sbt snapshot plugins", url("http://repo.scala-sbt.org/scalasbt/sbt-plugin-snapshots"))(Resolver.ivyStylePatterns),
-  Resolver.sonatypeRepo("snapshots"),
-  "Typesafe Snapshots Repository" at "http://repo.typesafe.com/typesafe/snapshots/",
+  Resolver.typesafeRepo("releases"),
+  Resolver.sbtPluginRepo("releases"),
+  Resolver.sonatypeRepo("releases"),
   Resolver.mavenLocal
 )
 
