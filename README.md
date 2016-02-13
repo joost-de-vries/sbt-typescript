@@ -12,3 +12,8 @@ To use this plugin use the addSbtPlugin command within your project's plugins.sb
 Your project's build file also needs to enable sbt-web plugins. For example with build.sbt:
 
     lazy val root = (project in file(".")).enablePlugins(SbtWeb)
+    
+    
+todo:
+add .d.ts files from webjars
+if outfile normalise path

@@ -1,13 +1,15 @@
 {
+  /* the compiler options */
   "compilerOptions": {
     "module": "system",
     "noImplicitAny": true,
     "removeComments": true,
     "preserveConstEnums": true,
-    "outFile": "tsc.js",
+    "outFile": "target/tsc.js",
     "sourceMap": true,
     "charset": "utf8"
   },
+  /* ignored */
   "exclude": [
     "project"
   ]

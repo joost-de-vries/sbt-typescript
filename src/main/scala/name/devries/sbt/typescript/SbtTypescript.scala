@@ -37,7 +37,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     excludeFilter := GlobFilter("*.d.ts"),
     projectFile := baseDirectory.value / "tsconfig.json",
     jsOptions := JsObject(Map(
-      "logLevel" -> JsString("debug"),
+      "logLevel" -> JsString("info"),
       "tsconfig" ->parseTsConfig().value ,
       "tsconfigFilename" -> JsString(projectFile.value.getParent)
     )).toString(),
@@ -70,25 +70,12 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
 
     val content = IO.read(tsConfigFile)
 
-    JsonParser(content)
+    JsonParser(removeComments(content))
   }
 
-  def validate(tsConfig: TsConfig) = {
-    val errors = ListBuffer.empty[String]
-    def msg(elName: String) = s"$elName would be ignored. Please remove the element."
-    def validate(att: Option[String], name: String) = if (att.nonEmpty) errors += msg(name)
-    if (tsConfig.exclude.isDefined) errors += msg("exclude")
-    if (tsConfig.files.isDefined) errors += msg("exclude")
-    tsConfig.compilerOptions.foreach { co =>
-      validate(co.out, "out")
-      validate(co.outDir, "outDir")
-      validate(co.outFile, "outFile")
-      validate(co.rootDir, "rootDir")
-
-    }
-
-    if (errors.nonEmpty) throw new IllegalArgumentException(errors.mkString(","))
+  def removeComments(string: String)={
+    // cribbed from http://blog.ostermiller.org/find-comment
+    string.replaceAll("""/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/""","")
   }
-
 
 }

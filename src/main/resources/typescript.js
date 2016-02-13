@@ -47,9 +47,6 @@ var st;
         var problems = [];
         var _a = toInputOutputFiles(sourceMaps), inputFiles = _a[0], outputFiles = _a[1];
         logger.debug("starting compilation of " + sourceMaps);
-        var opt = args.options;
-        opt.rootDir = rootDir;
-        opt.outDir = args.target;
         var confResult = typescript.parseConfigFileTextToJson(options.tsconfigFilename, JSON.stringify(options.tsconfig));
         if (confResult.error)
             problems.push(parseDiagnostic(confResult.error));

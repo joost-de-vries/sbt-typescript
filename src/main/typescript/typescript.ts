@@ -55,9 +55,6 @@ module st {
         let [inputFiles,outputFiles]=toInputOutputFiles(sourceMaps)
 
         logger.debug("starting compilation of " + sourceMaps);
-        let opt = args.options;
-        opt.rootDir = rootDir;
-        opt.outDir = args.target;
 
         const confResult = typescript.parseConfigFileTextToJson(options.tsconfigFilename,JSON.stringify(options.tsconfig));
         if(confResult.error) problems.push(parseDiagnostic(confResult.error))
