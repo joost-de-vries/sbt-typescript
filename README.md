@@ -14,7 +14,3 @@ Your project's build file also needs to enable sbt-web plugins. For example with
     lazy val root = (project in file(".")).enablePlugins(SbtWeb)
     
     
-todo:
-create testproject that uses import {} from dependencies
-add .d.ts files from webjars
-if outfile normalise path

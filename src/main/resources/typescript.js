@@ -63,7 +63,10 @@ var st;
             compilerOptions.rootDir = sbtTypescriptOpts.assetsDir;
             compilerOptions.outDir = target;
             var compilerHost = typescript.createCompilerHost(compilerOptions);
-            var program = typescript.createProgram(inputFiles, compilerOptions, compilerHost);
+            var filesToCompile = inputFiles;
+            if (sbtTypescriptOpts.extraFiles)
+                filesToCompile = inputFiles.concat(sbtTypescriptOpts.extraFiles);
+            var program = typescript.createProgram(filesToCompile, compilerOptions, compilerHost);
             problems.push.apply(problems, findGlobalProblems(program, options.tsCodesToIgnore));
             var emitOutput = program.emit();
             problems.push.apply(problems, toProblems(emitOutput.diagnostics, options.tsCodesToIgnore));
@@ -90,6 +93,7 @@ var st;
         }
     }
     function compileDone(compileResult) {
+        console.log(JSON.stringify(compileResult));
         console.log("\u0010" + JSON.stringify(compileResult));
     }
     function determineOutFile(outFile, options) {
@@ -109,6 +113,7 @@ var st;
                 return {};
             }
             var deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(function (f) { return f.fileName; }));
+            console.log("referenced files", sourceFile.referencedFiles);
             var outputFile = determineOutFile(outputFiles[index], compilerOptions);
             var filesWritten = [outputFile];
             if (compilerOptions.declaration) {

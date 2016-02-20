@@ -29,8 +29,10 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       "The location of the tsconfig.json  Default: <basedir>/tsconfig.json")
     val getTsConfig = TaskKey[JsObject]("get-tsconfig", "parses the tsconfig.json file")
 
+    val typingsFile = SettingKey[Option[File]]("typescript-typings-file", "A file that refers to typings that the build needs. Default None.")
+
     val tsCodesToIgnore = SettingKey[List[Int]]("typescript-codes-to-ignore",
-      "The tsc error codes (f.i. TS2307) to ignore. Default none")
+      "The tsc error codes (f.i. TS2307) to ignore. Default empty list.")
 
     val canNotFindModule = 2307 //see f.i. https://github.com/Microsoft/TypeScript/issues/3808
   }
@@ -44,18 +46,20 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     excludeFilter := GlobFilter("*.d.ts"),
     jsOptions := JsObject(Map(
       "logLevel" -> JsString(logLevel.value.toString),
-      "tsconfig" ->parseTsConfig().value ,
+      "tsconfig" -> parseTsConfig().value,
       "tsconfigDir" -> JsString(projectFile.value.getParent),
       "assetsDir" -> JsString((sourceDirectory in Assets).value.getAbsolutePath),
       "tsCodesToIgnore" -> JsArray(tsCodesToIgnore.value.toVector.map(JsNumber(_)))
-    )).toString()
+    ) ++ optionalFields(Map("extraFiles" -> typingsFile.value.map(tf => JsArray(JsString(tf.getCanonicalPath)))))
+    ).toString()
   )
 
   override def projectSettings = Seq(
     tsCodesToIgnore := List.empty[Int],
     projectFile := baseDirectory.value / "tsconfig.json",
+    typingsFile := None,
     JsEngineKeys.parallelism := 1
-  ) ++inTask(typescript)(
+  ) ++ inTask(typescript)(
     SbtJsTask.jsTaskSpecificUnscopedSettings ++
       inConfig(Assets)(typescriptUnscopedSettings) ++
       inConfig(TestAssets)(typescriptUnscopedSettings) ++
@@ -80,9 +84,18 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     JsonParser(removeComments(content))
   }
 
-  def removeComments(string: String)={
+  def removeComments(string: String) = {
     // cribbed from http://blog.ostermiller.org/find-comment
-    string.replaceAll("""/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/""","")
+    string.replaceAll("""/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/""", "")
   }
 
+
+  def optionalFields(m: Map[String, Option[JsValue]]): Map[String, JsValue] = {
+    m.flatMap { case (s, oj) => oj match {
+      case None => Map.empty[String, JsValue]
+      case Some(jsValue) => Map(s -> jsValue)
+    }
+    }
+  }
 }
+

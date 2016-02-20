@@ -57,7 +57,6 @@ module st {
 
     function compile(sourceMaps:string[][], options:SbtTypescriptOptions, target:string):CompilationResult {
         const problems:Problem[] = []
-        //const tscCodesToIgnore = [2307] //see f.i. https://github.com/Microsoft/TypeScript/issues/3808
 
         let [inputFiles,outputFiles]=toInputOutputFiles(sourceMaps)
 
@@ -73,7 +72,11 @@ module st {
             compilerOptions.outDir = target;
 
             const compilerHost = typescript.createCompilerHost(compilerOptions);
-            const program:Program = typescript.createProgram(inputFiles, compilerOptions, compilerHost);
+
+            let filesToCompile= inputFiles
+            if(sbtTypescriptOpts.extraFiles) filesToCompile = inputFiles.concat(sbtTypescriptOpts.extraFiles)
+
+            const program:Program = typescript.createProgram(filesToCompile, compilerOptions, compilerHost);
 
             problems.push(...findGlobalProblems(program,options.tsCodesToIgnore))
 
@@ -107,6 +110,8 @@ module st {
     }
 
     function compileDone(compileResult:CompilationResult) {
+        console.log(JSON.stringify(compileResult))
+
         // datalink escape character https://en.wikipedia.org/wiki/C0_and_C1_control_codes#DLE
         // used to signal result of compilation see https://github.com/sbt/sbt-js-engine/blob/master/src/main/scala/com/typesafe/sbt/jse/SbtJsTask.scala
         console.log("\u0010" + JSON.stringify(compileResult));
@@ -289,7 +294,8 @@ module st {
         tsconfig:any,
         tsconfigDir:string,
         assetsDir:string,
-        tsCodesToIgnore:number[]
+        tsCodesToIgnore:number[],
+        extraFiles:string[]
     }
 
     //from jstranspiler
