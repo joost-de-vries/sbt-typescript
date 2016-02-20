@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module":"commonjs",
     "noImplicitAny": false,
     "removeComments": true,
     "preserveConstEnums": true,
@@ -12,7 +12,7 @@
     "typings/browser",
     "typings/main",
     "typings/browser.d.ts",
-    "sbt-typescript-plugin-tester",
+    "example",
     "src/sbt-test"
   ]
 }

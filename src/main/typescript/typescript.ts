@@ -2,42 +2,39 @@
 // inspired by https://github.com/ArpNetworking/sbt-typescript/blob/master/src/main/resources/typescriptc.js
 import {Program,Diagnostic,SourceFile,CompilerOptions,DiagnosticMessageChain,DiagnosticCategory} from 'typescript'
 
-module st {
-    "use strict";
+class Logger {
+    constructor(private logLevel:string) {
+    }
 
-    class Logger {
-        constructor(private logLevel:string) {
-        }
+    debug(message:string, object?:any) {
+        if (this.logLevel === 'debug') console.log(message, object);
+    }
 
-        debug(message:string, object?:any) {
-            if (this.logLevel === 'debug') console.log(message, object);
-        }
+    info(message:string) {
+        if (this.logLevel === 'debug' || this.logLevel === 'info') console.log(message);
+    }
 
-        info(message:string) {
-            if (this.logLevel === 'debug' || this.logLevel === 'info') console.log(message);
-        }
+    warn(message:string) {
+        if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn') console.log(message);
+    }
 
-        warn(message:string) {
-            if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn') console.log(message);
-        }
-
-        error(message:string, error?) {
-            if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn' || this.logLevel === 'error') {
-                if (error !== undefined) {
-                    let errorMessage = error.message;
-                    if (error.fileName !== undefined) {
-                        errorMessage = errorMessage + " in " + error.fileName;
-                    }
-                    if (error.lineNumber !== undefined) {
-                        errorMessage = errorMessage + " at line " + error.lineNumber;
-                    }
-                    console.log(message + " " + errorMessage);
-                } else {
-                    console.log(message);
+    error(message:string, error?) {
+        if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn' || this.logLevel === 'error') {
+            if (error !== undefined) {
+                let errorMessage = error.message;
+                if (error.fileName !== undefined) {
+                    errorMessage = errorMessage + " in " + error.fileName;
                 }
+                if (error.lineNumber !== undefined) {
+                    errorMessage = errorMessage + " at line " + error.lineNumber;
+                }
+                console.log(message + " " + errorMessage);
+            } else {
+                console.log(message);
             }
         }
     }
+}
 
     const fs = require('fs');
     const typescript = require("typescript");
@@ -73,12 +70,12 @@ module st {
 
             const compilerHost = typescript.createCompilerHost(compilerOptions);
 
-            let filesToCompile= inputFiles
-            if(sbtTypescriptOpts.extraFiles) filesToCompile = inputFiles.concat(sbtTypescriptOpts.extraFiles)
+            let filesToCompile = inputFiles
+            if (sbtTypescriptOpts.extraFiles) filesToCompile = inputFiles.concat(sbtTypescriptOpts.extraFiles)
 
             const program:Program = typescript.createProgram(filesToCompile, compilerOptions, compilerHost);
 
-            problems.push(...findGlobalProblems(program,options.tsCodesToIgnore))
+            problems.push(...findGlobalProblems(program, options.tsCodesToIgnore))
 
             const emitOutput = program.emit();
             problems.push(...toProblems(emitOutput.diagnostics, options.tsCodesToIgnore));
@@ -86,15 +83,29 @@ module st {
             const sourceFiles:SourceFile[] = program.getSourceFiles();
             logger.debug("got some source files " + JSON.stringify(sourceFiles.map(sf => sf.fileName)));
 
-            results = flatten(sourceFiles.map(toCompilationResult(inputFiles, outputFiles, compilerOptions)));
+            results = flatten(sourceFiles.map(toCompilationResult(inputFiles, outputFiles, compilerOptions, logger)));
 
         }
+
+        function flatten<T>(xs:Option<T>[]):T[] {
+            var result = []
+            xs.forEach(x => {
+                if (x.value) result.push(x.value)
+            })
+            return result
+        }
+
 
         const output = <CompilationResult>{
             results: results,
             problems: problems
         };
         return output;
+    }
+
+    interface CompilationResult {
+        results: CompilationFileResult[]
+        problems: Problem[]
     }
 
     function calculateRootDir(sourceMaps):string {
@@ -117,66 +128,6 @@ module st {
         console.log("\u0010" + JSON.stringify(compileResult));
     }
 
-    function determineOutFile(outFile, options:CompilerOptions):string {
-        if (options.outFile) {
-            logger.debug("single outFile")
-            return options.outFile
-        } else {
-            return outFile
-        }
-    }
-
-    function toCompilationResult(inputFiles, outputFiles, compilerOptions:CompilerOptions):(sf:SourceFile)=> Option<CompilationFileResult> {
-        return sourceFile => {
-            let index = inputFiles.indexOf(path.normalize(sourceFile.fileName));
-            if (index === -1) {
-                logger.debug("did not find source file " + sourceFile.fileName + " in list compile list, assuming library or dependency and skipping output");
-                return <Option<CompilationFileResult>>{
-                    //none
-                };
-            }
-
-            let deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(f => f.fileName));
-
-            let outputFile = determineOutFile(outputFiles[index], compilerOptions);
-
-            let filesWritten = [outputFile];
-
-            if (compilerOptions.declaration) {
-                let outputFileDeclaration = replaceFileExtension(outputFile, ".d.ts");
-                filesWritten.push(outputFileDeclaration);
-            }
-
-            if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
-                let outputFileMap = outputFile + ".map";
-                fixSourceMapFile(outputFileMap);
-                filesWritten.push(outputFileMap);
-            }
-
-            const result = <CompilationFileResult>{
-                source: sourceFile.fileName,
-                result: {
-                    filesRead: deps,
-                    filesWritten: filesWritten
-                }
-            };
-            return <Option<CompilationFileResult>>{
-                value: result
-            };
-        }
-    }
-
-    interface Option<T> {
-        value?: T
-    }
-
-    function flatten<T>(xs:Option<T>[]):T[] {
-        var result = []
-        xs.forEach(x => {
-            if (x.value) result.push(x.value)
-        })
-        return result
-    }
 
     function toInputOutputFiles(sourceMaps):[string[],string[]] {
         const inputFiles = []
@@ -195,31 +146,6 @@ module st {
         return [inputFiles, outputFiles]
     }
 
-    function replaceFileExtension(file:string, ext:string) {
-        let oldExt = path.extname(file);
-        return file.substring(0, file.length - oldExt.length) + ext;
-    }
-
-    function fixSourceMapFile(file) {
-        let sourceMap = JSON.parse(fs.readFileSync(file, 'utf-8'));
-        sourceMap.sources = sourceMap.sources.map((source)=> path.basename(source));
-        fs.writeFileSync(file, JSON.stringify(sourceMap), 'utf-8');
-    }
-
-    interface Args {
-        sourceFileMappings:string[][]
-        target:string
-        options:SbtTypescriptOptions
-    }
-
-    interface CompilationFileResult {
-        source: string
-        result: {
-            filesRead: string[]
-            filesWritten: string[]
-        }
-    }
-
     interface Problem {
         lineNumber: number
         characterOffset: number
@@ -229,18 +155,14 @@ module st {
         lineContent: string
     }
 
-    interface CompilationResult {
-        results: CompilationFileResult[]
-        problems: Problem[]
-    }
 
     function findGlobalProblems(program:Program, tsIgnoreList?:number[]):Problem[] {
-        let diagnostics= program.getSyntacticDiagnostics()
+        let diagnostics = program.getSyntacticDiagnostics()
             .concat(program.getGlobalDiagnostics())
             .concat(program.getSemanticDiagnostics())
 
-            if(tsIgnoreList) return diagnostics.filter(ignoreDiagnostic(tsIgnoreList)).map(parseDiagnostic)
-                else return diagnostics.map(parseDiagnostic)
+        if (tsIgnoreList) return diagnostics.filter(ignoreDiagnostic(tsIgnoreList)).map(parseDiagnostic)
+        else return diagnostics.map(parseDiagnostic)
     }
 
     function toProblems(diagnostics:Diagnostic[], tsIgnoreList?:number[]):Problem[] {
@@ -249,7 +171,7 @@ module st {
     }
 
     function ignoreDiagnostic(tsIgnoreList:number[]):(d:Diagnostic)=> boolean {
-        return (d:Diagnostic) =>  tsIgnoreList.indexOf(d.code) === -1
+        return (d:Diagnostic) => tsIgnoreList.indexOf(d.code) === -1
     }
 
     function parseDiagnostic(d:Diagnostic):Problem {
@@ -289,49 +211,131 @@ module st {
 
     }
 
-    interface SbtTypescriptOptions {
-        logLevel:string,
-        tsconfig:any,
-        tsconfigDir:string,
-        assetsDir:string,
-        tsCodesToIgnore:number[],
-        extraFiles:string[]
+    /* compilation results */
+    export function toCompilationResult(inputFiles, outputFiles, compilerOptions:CompilerOptions, logger:Logger):(sf:SourceFile)=> Option<CompilationFileResult> {
+        return sourceFile => {
+            let index = inputFiles.indexOf(path.normalize(sourceFile.fileName));
+            if (index === -1) {
+                logger.debug("did not find source file " + sourceFile.fileName + " in list compile list, assuming library or dependency and skipping output");
+                return <Option<CompilationFileResult>>{
+                    //none
+                };
+            }
+
+            let deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(f => f.fileName));
+
+            let outputFile = determineOutFile(outputFiles[index], compilerOptions, logger);
+
+            let filesWritten = [outputFile];
+
+            if (compilerOptions.declaration) {
+                let outputFileDeclaration = replaceFileExtension(outputFile, ".d.ts");
+                filesWritten.push(outputFileDeclaration);
+            }
+
+            if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
+                let outputFileMap = outputFile + ".map";
+                fixSourceMapFile(outputFileMap);
+                filesWritten.push(outputFileMap);
+            }
+
+            const result = <CompilationFileResult>{
+                source: sourceFile.fileName,
+                result: {
+                    filesRead: deps,
+                    filesWritten: filesWritten
+                }
+            };
+            return <Option<CompilationFileResult>>{
+                value: result
+            };
+        }
     }
 
-    //from jstranspiler
-    function parseArgs(args):Args {
-
-        const SOURCE_FILE_MAPPINGS_ARG = 2;
-        const TARGET_ARG = 3;
-        const OPTIONS_ARG = 4;
-
-        const cwd = process.cwd();
-
-        let sourceFileMappings;
-        try {
-            sourceFileMappings = JSON.parse(args[SOURCE_FILE_MAPPINGS_ARG]);
-        } catch (e) {
-            sourceFileMappings = [[
-                path.join(cwd, args[SOURCE_FILE_MAPPINGS_ARG]),
-                args[SOURCE_FILE_MAPPINGS_ARG]
-            ]];
-        }
-
-        let target = (args.length > TARGET_ARG ? args[TARGET_ARG] : path.join(cwd, "lib"));
-
-        let options;
-        if (target.length > 0 && target.charAt(0) === "{") {
-            options = JSON.parse(target);
-            target = path.join(cwd, "lib");
+    function determineOutFile(outFile, options:CompilerOptions, logger:Logger):string {
+        if (options.outFile) {
+            logger.debug("single outFile")
+            return options.outFile
         } else {
-            options = (args.length > OPTIONS_ARG ? JSON.parse(args[OPTIONS_ARG]) : {});
+            return outFile
         }
-
-        return <Args>{
-            sourceFileMappings: sourceFileMappings,
-            target: target,
-            options: options
-        };
-
     }
+
+    function fixSourceMapFile(file) {
+        let sourceMap = JSON.parse(fs.readFileSync(file, 'utf-8'));
+        sourceMap.sources = sourceMap.sources.map((source)=> path.basename(source));
+        fs.writeFileSync(file, JSON.stringify(sourceMap), 'utf-8');
+    }
+
+    export interface CompilationFileResult {
+        source: string
+        result: {
+            filesRead: string[]
+            filesWritten: string[]
+        }
+    }
+
+    export interface Option<T> {
+        value?: T
+    }
+
+/** interfacing with sbt */
+//from jstranspiler
+export function parseArgs(args):Args {
+
+    const SOURCE_FILE_MAPPINGS_ARG = 2;
+    const TARGET_ARG = 3;
+    const OPTIONS_ARG = 4;
+
+    const cwd = process.cwd();
+
+    let sourceFileMappings;
+    try {
+        sourceFileMappings = JSON.parse(args[SOURCE_FILE_MAPPINGS_ARG]);
+    } catch (e) {
+        sourceFileMappings = [[
+            path.join(cwd, args[SOURCE_FILE_MAPPINGS_ARG]),
+            args[SOURCE_FILE_MAPPINGS_ARG]
+        ]];
+    }
+
+    let target = (args.length > TARGET_ARG ? args[TARGET_ARG] : path.join(cwd, "lib"));
+
+    let options;
+    if (target.length > 0 && target.charAt(0) === "{") {
+        options = JSON.parse(target);
+        target = path.join(cwd, "lib");
+    } else {
+        options = (args.length > OPTIONS_ARG ? JSON.parse(args[OPTIONS_ARG]) : {});
+    }
+
+    return <Args>{
+        sourceFileMappings: sourceFileMappings,
+        target: target,
+        options: options
+    };
+
 }
+
+export interface Args {
+    sourceFileMappings:string[][]
+    target:string
+    options:SbtTypescriptOptions
+}
+
+export interface SbtTypescriptOptions {
+    logLevel:string,
+    tsconfig:any,
+    tsconfigDir:string,
+    assetsDir:string,
+    tsCodesToIgnore:number[],
+    extraFiles:string[]
+}
+
+ function replaceFileExtension(file:string, ext:string) {
+    const path = require("path");
+    let oldExt = path.extname(file);
+    return file.substring(0, file.length - oldExt.length) + ext;
+}
+
+
