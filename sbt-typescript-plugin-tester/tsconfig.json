@@ -1,16 +1,9 @@
 {
   /* the compiler options */
   "compilerOptions": {
-    "module": "system",
-    "noImplicitAny": true,
-    "removeComments": true,
-    "preserveConstEnums": true,
-    "outFile": "target/outFile.js", 
-    "sourceMap": true,
-    "charset": "utf8"
-  },
-  /* ignored */
-  "exclude": [
-    "project"
-  ]
+    "module":"commonjs",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "isolatedModules":true
+  }
 }

@@ -1,0 +1,3 @@
+# check handling of inlineSourcemap
+> assets
+$ absent target/web/public/main/javascripts/greeter.js.map
