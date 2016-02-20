@@ -54,15 +54,14 @@ module st {
         let [inputFiles,outputFiles]=toInputOutputFiles(sourceMaps)
 
         logger.debug("starting compilation of " + sourceMaps);
+        logger.debug("compiler options: ", options.tsconfig)
         const confResult = typescript.parseConfigFileTextToJson(options.tsconfigDir, JSON.stringify(options.tsconfig));
-        if (confResult.error) problems.push(parseDiagnostic(confResult.error))
-
         let results:CompilationFileResult[] = []
-
-        if (confResult.config) {
-            logger.debug("options: ",confResult.config);
+        if (confResult.error) problems.push(parseDiagnostic(confResult.error))
+        else if (confResult.config) {
+            logger.debug("parsed compiler options: ",confResult.config);
             const compilerOptions:CompilerOptions = confResult.config.compilerOptions
-            compilerOptions.rootDir = options.tsconfigDir;
+            compilerOptions.rootDir =sbtTypescriptOpts.assetsDir
             compilerOptions.outDir = target;
 
             const compilerHost = typescript.createCompilerHost(compilerOptions);

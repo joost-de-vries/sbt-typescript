@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "system",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    /* "outFile": "target/main2.js", */
+    /* "moduleResolution": "classic" */
+    "sourceMap": true,
+    "inlineSources": true,
+    "inlineSourceMap": true
+  },
+  /* ignored */
+  "exclude": [
+    "project"
+  ]
+}

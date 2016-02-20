@@ -45,14 +45,15 @@ var st;
         var problems = [];
         var _a = toInputOutputFiles(sourceMaps), inputFiles = _a[0], outputFiles = _a[1];
         logger.debug("starting compilation of " + sourceMaps);
+        logger.debug("compiler options: ", options.tsconfig);
         var confResult = typescript.parseConfigFileTextToJson(options.tsconfigDir, JSON.stringify(options.tsconfig));
+        var results = [];
         if (confResult.error)
             problems.push(parseDiagnostic(confResult.error));
-        var results = [];
-        if (confResult.config) {
-            logger.debug("options: ", confResult.config);
+        else if (confResult.config) {
+            logger.debug("parsed compiler options: ", confResult.config);
             var compilerOptions = confResult.config.compilerOptions;
-            compilerOptions.rootDir = options.tsconfigDir;
+            compilerOptions.rootDir = sbtTypescriptOpts.assetsDir;
             compilerOptions.outDir = target;
             var compilerHost = typescript.createCompilerHost(compilerOptions);
             var program = typescript.createProgram(inputFiles, compilerOptions, compilerHost);
