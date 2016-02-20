@@ -1,3 +1,4 @@
+"use strict";
 var st;
 (function (st) {
     "use strict";
@@ -5,12 +6,18 @@ var st;
         function Logger(logLevel) {
             this.logLevel = logLevel;
         }
-        Logger.prototype.debug = function (message, object) { if (this.logLevel === 'debug')
-            console.log(message, object); };
-        Logger.prototype.info = function (message) { if (this.logLevel === 'debug' || this.logLevel === 'info')
-            console.log(message); };
-        Logger.prototype.warn = function (message) { if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn')
-            console.log(message); };
+        Logger.prototype.debug = function (message, object) {
+            if (this.logLevel === 'debug')
+                console.log(message, object);
+        };
+        Logger.prototype.info = function (message) {
+            if (this.logLevel === 'debug' || this.logLevel === 'info')
+                console.log(message);
+        };
+        Logger.prototype.warn = function (message) {
+            if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn')
+                console.log(message);
+        };
         Logger.prototype.error = function (message, error) {
             if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn' || this.logLevel === 'error') {
                 if (error !== undefined) {
@@ -29,7 +36,7 @@ var st;
             }
         };
         return Logger;
-    })();
+    }());
     var fs = require('fs');
     var typescript = require("typescript");
     var path = require("path");
@@ -57,9 +64,9 @@ var st;
             compilerOptions.outDir = target;
             var compilerHost = typescript.createCompilerHost(compilerOptions);
             var program = typescript.createProgram(inputFiles, compilerOptions, compilerHost);
-            problems.push.apply(problems, findGlobalProblems(program));
+            problems.push.apply(problems, findGlobalProblems(program, options.tsCodesToIgnore));
             var emitOutput = program.emit();
-            problems.push.apply(problems, toProblems(emitOutput.diagnostics));
+            problems.push.apply(problems, toProblems(emitOutput.diagnostics, options.tsCodesToIgnore));
             var sourceFiles = program.getSourceFiles();
             logger.debug("got some source files " + JSON.stringify(sourceFiles.map(function (sf) { return sf.fileName; })));
             results = flatten(sourceFiles.map(toCompilationResult(inputFiles, outputFiles, compilerOptions)));
@@ -153,14 +160,23 @@ var st;
         sourceMap.sources = sourceMap.sources.map(function (source) { return path.basename(source); });
         fs.writeFileSync(file, JSON.stringify(sourceMap), 'utf-8');
     }
-    function findGlobalProblems(program) {
-        return program.getSyntacticDiagnostics()
+    function findGlobalProblems(program, tsIgnoreList) {
+        var diagnostics = program.getSyntacticDiagnostics()
             .concat(program.getGlobalDiagnostics())
-            .concat(program.getSemanticDiagnostics()).
-            map(parseDiagnostic);
+            .concat(program.getSemanticDiagnostics());
+        if (tsIgnoreList)
+            return diagnostics.filter(ignoreDiagnostic(tsIgnoreList)).map(parseDiagnostic);
+        else
+            return diagnostics.map(parseDiagnostic);
     }
-    function toProblems(diagnostics) {
-        return diagnostics.map(parseDiagnostic);
+    function toProblems(diagnostics, tsIgnoreList) {
+        if (tsIgnoreList)
+            return diagnostics.filter(ignoreDiagnostic(tsIgnoreList)).map(parseDiagnostic);
+        else
+            return diagnostics.map(parseDiagnostic);
+    }
+    function ignoreDiagnostic(tsIgnoreList) {
+        return function (d) { return tsIgnoreList.indexOf(d.code) === -1; };
     }
     function parseDiagnostic(d) {
         var lineCol = { line: 0, character: 0 };
@@ -176,7 +192,7 @@ var st;
         var problem = {
             lineNumber: lineCol.line,
             characterOffset: lineCol.character,
-            message: typescript.flattenDiagnosticMessageText(d.messageText, typescript.sys.newLine),
+            message: d.code + " " + typescript.flattenDiagnosticMessageText(d.messageText, typescript.sys.newLine),
             source: fileName,
             severity: toSeverity(d.category),
             lineContent: lineText

@@ -1,11 +1,12 @@
 package name.devries.sbt.typescript
 
+import akka.event.Logging.LogLevel
 import com.typesafe.sbt.jse.JsEngineImport.JsEngineKeys
 import com.typesafe.sbt.jse.SbtJsTask
 import com.typesafe.sbt.web.{CompileProblems, LineBasedProblem}
 import sbt.Keys._
 import sbt._
-import spray.json.{JsonParser, JsString, JsBoolean, JsObject,pimpAny}
+import spray.json._
 import xsbti.Severity
 import com.typesafe.sbt.jse.SbtJsEngine.autoImport.JsEngineKeys._
 import com.typesafe.sbt.jse.SbtJsTask.autoImport.JsTaskKeys._
@@ -27,26 +28,33 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     val projectFile = SettingKey[File]("typescript-projectfile",
       "The location of the tsconfig.json  Default: <basedir>/tsconfig.json")
     val getTsConfig = TaskKey[JsObject]("get-tsconfig", "parses the tsconfig.json file")
+
+    val tsCodesToIgnore = SettingKey[List[Int]]("typescript-codes-to-ignore",
+      "The tsc error codes (f.i. TS2307) to ignore. Default none")
+
+    val canNotFindModule = 2307 //see f.i. https://github.com/Microsoft/TypeScript/issues/3808
   }
 
   import autoImport._
 
   // wrt to out vs outFile see https://github.com/Microsoft/TypeScript/issues/5107
   val typescriptUnscopedSettings = Seq(
+    logLevel := Level.Debug,
     includeFilter := GlobFilter("*.ts") | GlobFilter("*.tsx"),
     excludeFilter := GlobFilter("*.d.ts"),
-    projectFile := baseDirectory.value / "tsconfig.json",
     jsOptions := JsObject(Map(
-      "logLevel" -> JsString("debug"),
+      "logLevel" -> JsString(logLevel.value.toString),
       "tsconfig" ->parseTsConfig().value ,
       "tsconfigDir" -> JsString(projectFile.value.getParent),
-      "assetsDir" -> JsString((sourceDirectory in Assets).value.getAbsolutePath)
+      "assetsDir" -> JsString((sourceDirectory in Assets).value.getAbsolutePath),
+      "tsCodesToIgnore" -> JsArray(tsCodesToIgnore.value.toVector.map(JsNumber(_)))
     )).toString()
   )
 
   override def projectSettings = Seq(
-    JsEngineKeys.parallelism := 1,
-    logLevel := Level.Info
+    tsCodesToIgnore := List.empty[Int],
+    projectFile := baseDirectory.value / "tsconfig.json",
+    JsEngineKeys.parallelism := 1
   ) ++inTask(typescript)(
     SbtJsTask.jsTaskSpecificUnscopedSettings ++
       inConfig(Assets)(typescriptUnscopedSettings) ++

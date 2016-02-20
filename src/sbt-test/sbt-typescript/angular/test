@@ -1,3 +1,0 @@
-# check handling of angular
-> assets
-$ exists target/outfile.js

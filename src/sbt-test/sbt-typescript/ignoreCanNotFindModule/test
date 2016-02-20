@@ -1,0 +1,3 @@
+# check handling of angular
+> assets
+$ exists target/web/public/main/app/app.js

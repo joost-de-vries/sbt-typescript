@@ -6,13 +6,20 @@ module st {
     "use strict";
 
     class Logger {
-        constructor(private logLevel:string) {}
+        constructor(private logLevel:string) {
+        }
 
-        debug(message:string, object?:any) { if (this.logLevel === 'debug') console.log(message,object);}
+        debug(message:string, object?:any) {
+            if (this.logLevel === 'debug') console.log(message, object);
+        }
 
-        info(message:string) {if (this.logLevel === 'debug' || this.logLevel === 'info') console.log(message);}
+        info(message:string) {
+            if (this.logLevel === 'debug' || this.logLevel === 'info') console.log(message);
+        }
 
-        warn(message:string) {if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn') console.log(message);}
+        warn(message:string) {
+            if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn') console.log(message);
+        }
 
         error(message:string, error?) {
             if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn' || this.logLevel === 'error') {
@@ -42,14 +49,15 @@ module st {
 
     const logger = new Logger(sbtTypescriptOpts.logLevel);
     logger.debug("starting compile");
-    logger.debug("args: ",args);
+    logger.debug("args: ", args);
     logger.debug("target: " + args.target)
 
-    const compileResult = compile(args.sourceFileMappings, sbtTypescriptOpts,args.target)
+    const compileResult = compile(args.sourceFileMappings, sbtTypescriptOpts, args.target)
     compileDone(compileResult)
 
-    function compile(sourceMaps:string[][], options:SbtTypescriptOptions,target:string):CompilationResult {
+    function compile(sourceMaps:string[][], options:SbtTypescriptOptions, target:string):CompilationResult {
         const problems:Problem[] = []
+        //const tscCodesToIgnore = [2307] //see f.i. https://github.com/Microsoft/TypeScript/issues/3808
 
         let [inputFiles,outputFiles]=toInputOutputFiles(sourceMaps)
 
@@ -59,18 +67,18 @@ module st {
         let results:CompilationFileResult[] = []
         if (confResult.error) problems.push(parseDiagnostic(confResult.error))
         else if (confResult.config) {
-            logger.debug("parsed compiler options: ",confResult.config);
+            logger.debug("parsed compiler options: ", confResult.config);
             const compilerOptions:CompilerOptions = confResult.config.compilerOptions
-            compilerOptions.rootDir =sbtTypescriptOpts.assetsDir
+            compilerOptions.rootDir = sbtTypescriptOpts.assetsDir
             compilerOptions.outDir = target;
 
             const compilerHost = typescript.createCompilerHost(compilerOptions);
             const program:Program = typescript.createProgram(inputFiles, compilerOptions, compilerHost);
 
-            problems.push(...findGlobalProblems(program))
+            problems.push(...findGlobalProblems(program,options.tsCodesToIgnore))
 
             const emitOutput = program.emit();
-            problems.push(...toProblems(emitOutput.diagnostics));
+            problems.push(...toProblems(emitOutput.diagnostics, options.tsCodesToIgnore));
 
             const sourceFiles:SourceFile[] = program.getSourceFiles();
             logger.debug("got some source files " + JSON.stringify(sourceFiles.map(sf => sf.fileName)));
@@ -91,7 +99,7 @@ module st {
             const inputFile = path.normalize(sourceMaps[0][0]);
             const outputFile = path.normalize(sourceMaps[0][1]);
             const rootDir = inputFile.substring(0, inputFile.length - outputFile.length);
-            console.log("rootdir is",rootDir)
+            console.log("rootdir is", rootDir)
             return rootDir
         } else {
             return ""
@@ -134,7 +142,7 @@ module st {
                 filesWritten.push(outputFileDeclaration);
             }
 
-            if (compilerOptions.sourceMap&&!compilerOptions.inlineSourceMap) {
+            if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
                 let outputFileMap = outputFile + ".map";
                 fixSourceMapFile(outputFileMap);
                 filesWritten.push(outputFileMap);
@@ -221,15 +229,22 @@ module st {
         problems: Problem[]
     }
 
-    function findGlobalProblems(program:Program):Problem[] {
-         return program.getSyntacticDiagnostics()
-             .concat(program.getGlobalDiagnostics())
-             .concat(program.getSemanticDiagnostics()).
-             map(parseDiagnostic)
+    function findGlobalProblems(program:Program, tsIgnoreList?:number[]):Problem[] {
+        let diagnostics= program.getSyntacticDiagnostics()
+            .concat(program.getGlobalDiagnostics())
+            .concat(program.getSemanticDiagnostics())
+
+            if(tsIgnoreList) return diagnostics.filter(ignoreDiagnostic(tsIgnoreList)).map(parseDiagnostic)
+                else return diagnostics.map(parseDiagnostic)
     }
 
-    function toProblems(diagnostics:Diagnostic[]):Problem[] {
-        return diagnostics.map(parseDiagnostic)
+    function toProblems(diagnostics:Diagnostic[], tsIgnoreList?:number[]):Problem[] {
+        if (tsIgnoreList) return diagnostics.filter(ignoreDiagnostic(tsIgnoreList)).map(parseDiagnostic)
+        else return diagnostics.map(parseDiagnostic)
+    }
+
+    function ignoreDiagnostic(tsIgnoreList:number[]):(d:Diagnostic)=> boolean {
+        return (d:Diagnostic) =>  tsIgnoreList.indexOf(d.code) === -1
     }
 
     function parseDiagnostic(d:Diagnostic):Problem {
@@ -248,7 +263,7 @@ module st {
         let problem = <Problem>{
             lineNumber: lineCol.line,
             characterOffset: lineCol.character,
-            message: typescript.flattenDiagnosticMessageText(d.messageText, typescript.sys.newLine),
+            message: d.code + " " + typescript.flattenDiagnosticMessageText(d.messageText, typescript.sys.newLine),
             source: fileName,
             severity: toSeverity(d.category),
             lineContent: lineText
@@ -273,7 +288,8 @@ module st {
         logLevel:string,
         tsconfig:any,
         tsconfigDir:string,
-        assetsDir:string
+        assetsDir:string,
+        tsCodesToIgnore:number[]
     }
 
     //from jstranspiler
