@@ -37,18 +37,17 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     excludeFilter := GlobFilter("*.d.ts"),
     projectFile := baseDirectory.value / "tsconfig.json",
     jsOptions := JsObject(Map(
-      "logLevel" -> JsString("info"),
+      "logLevel" -> JsString("debug"),
       "tsconfig" ->parseTsConfig().value ,
-      "tsconfigFilename" -> JsString(projectFile.value.getParent)
-    )).toString(),
-    JsEngineKeys.parallelism := 1
+      "tsconfigDir" -> JsString(projectFile.value.getParent),
+      "assetsDir" -> JsString((sourceDirectory in Assets).value.getAbsolutePath)
+    )).toString()
   )
 
   override def projectSettings = Seq(
-    //outDir := ((webTarget in Assets).value / "typescript").absolutePath,
     JsEngineKeys.parallelism := 1,
     logLevel := Level.Info
-  ) ++ inTask(typescript)(
+  ) ++inTask(typescript)(
     SbtJsTask.jsTaskSpecificUnscopedSettings ++
       inConfig(Assets)(typescriptUnscopedSettings) ++
       inConfig(TestAssets)(typescriptUnscopedSettings) ++
@@ -56,8 +55,8 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
         moduleName := "typescript",
         shellFile := getClass.getClassLoader.getResource("typescript.js"),
 
-        taskMessage in Assets := "TypeScript compiling",
-        taskMessage in TestAssets := "TypeScript test compiling"
+        taskMessage in Assets := "Typescript compiling",
+        taskMessage in TestAssets := "Typescript test compiling"
       )
   ) ++ SbtJsTask.addJsSourceFileTasks(typescript) ++ Seq(
     typescript in Assets := (typescript in Assets).dependsOn(webModules in Assets).value,

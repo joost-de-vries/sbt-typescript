@@ -8,7 +8,7 @@ module st {
     class Logger {
         constructor(private logLevel:string) {}
 
-        debug(message:string) {if (this.logLevel === 'debug') console.log(message);}
+        debug(message:string, object?:any) { if (this.logLevel === 'debug') console.log(message,object);}
 
         info(message:string) {if (this.logLevel === 'debug' || this.logLevel === 'info') console.log(message);}
 
@@ -35,35 +35,36 @@ module st {
     const fs = require('fs');
     const typescript = require("typescript");
     const path = require("path");
-    const jst = require("jstranspiler");
-    const args:Args = jst.args(process.argv);
 
-    const sbtTypescriptOpts: SbtTypescriptOptions = args.options
+    const args:Args = parseArgs(process.argv);
+
+    const sbtTypescriptOpts:SbtTypescriptOptions = args.options
 
     const logger = new Logger(sbtTypescriptOpts.logLevel);
     logger.debug("starting compile");
-    logger.debug("args=" + JSON.stringify(args));
+    logger.debug("args: ",args);
     logger.debug("target: " + args.target)
 
-    const compileResult = compile(args.sourceFileMappings,sbtTypescriptOpts)
+    const compileResult = compile(args.sourceFileMappings, sbtTypescriptOpts,args.target)
     compileDone(compileResult)
 
-    function compile(sourceMaps:string[][], options:SbtTypescriptOptions):CompilationResult {
-        const rootDir = calculateRootDir(sourceMaps);
+    function compile(sourceMaps:string[][], options:SbtTypescriptOptions,target:string):CompilationResult {
         const problems:Problem[] = []
 
         let [inputFiles,outputFiles]=toInputOutputFiles(sourceMaps)
 
         logger.debug("starting compilation of " + sourceMaps);
+        const confResult = typescript.parseConfigFileTextToJson(options.tsconfigDir, JSON.stringify(options.tsconfig));
+        if (confResult.error) problems.push(parseDiagnostic(confResult.error))
 
-        const confResult = typescript.parseConfigFileTextToJson(options.tsconfigFilename,JSON.stringify(options.tsconfig));
-        if(confResult.error) problems.push(parseDiagnostic(confResult.error))
+        let results:CompilationFileResult[] = []
 
-        let results:CompilationFileResult[]=[]
-
-        if(confResult.config){
-            logger.debug("options = " + JSON.stringify(confResult.config));
+        if (confResult.config) {
+            logger.debug("options: ",confResult.config);
             const compilerOptions:CompilerOptions = confResult.config.compilerOptions
+            compilerOptions.rootDir = options.tsconfigDir;
+            compilerOptions.outDir = target;
+
             const compilerHost = typescript.createCompilerHost(compilerOptions);
             const program:Program = typescript.createProgram(inputFiles, compilerOptions, compilerHost);
 
@@ -86,7 +87,19 @@ module st {
         return output;
     }
 
-    function compileDone(compileResult:CompilationResult){
+    function calculateRootDir(sourceMaps):string {
+        if (sourceMaps.length) {
+            const inputFile = path.normalize(sourceMaps[0][0]);
+            const outputFile = path.normalize(sourceMaps[0][1]);
+            const rootDir = inputFile.substring(0, inputFile.length - outputFile.length);
+            console.log("rootdir is",rootDir)
+            return rootDir
+        } else {
+            return ""
+        }
+    }
+
+    function compileDone(compileResult:CompilationResult) {
         // datalink escape character https://en.wikipedia.org/wiki/C0_and_C1_control_codes#DLE
         // used to signal result of compilation see https://github.com/sbt/sbt-js-engine/blob/master/src/main/scala/com/typesafe/sbt/jse/SbtJsTask.scala
         console.log("\u0010" + JSON.stringify(compileResult));
@@ -122,7 +135,7 @@ module st {
                 filesWritten.push(outputFileDeclaration);
             }
 
-            if (compilerOptions.sourceMap) {
+            if (compilerOptions.sourceMap&&!compilerOptions.inlineSourceMap) {
                 let outputFileMap = outputFile + ".map";
                 fixSourceMapFile(outputFileMap);
                 filesWritten.push(outputFileMap);
@@ -177,14 +190,14 @@ module st {
 
     function fixSourceMapFile(file) {
         let sourceMap = JSON.parse(fs.readFileSync(file, 'utf-8'));
-        sourceMap.sources = sourceMap.sources.map((source)=>  path.basename(source));
+        sourceMap.sources = sourceMap.sources.map((source)=> path.basename(source));
         fs.writeFileSync(file, JSON.stringify(sourceMap), 'utf-8');
     }
 
     interface Args {
         sourceFileMappings:string[][]
         target:string
-        options:any
+        options:SbtTypescriptOptions
     }
 
     interface CompilationFileResult {
@@ -209,29 +222,11 @@ module st {
         problems: Problem[]
     }
 
-    function calculateRootDir(sourceMaps):string {
-        if (sourceMaps.length) {
-            const inputFile = path.normalize(sourceMaps[0][0]);
-            const outputFile = path.normalize(sourceMaps[0][1]);
-            return inputFile.substring(0, inputFile.length - outputFile.length);
-        } else {
-            return ""
-        }
-    }
-
     function findGlobalProblems(program:Program):Problem[] {
-        let syntacticDiagnostics = program.getSyntacticDiagnostics();
-        if (syntacticDiagnostics.length === 0) {
-            let globalDiagnostics = program.getGlobalDiagnostics();
-            if (globalDiagnostics.length === 0) {
-                let semanticDiagnostics = program.getSemanticDiagnostics();
-                return toProblems(semanticDiagnostics);
-            } else {
-                return toProblems(globalDiagnostics)
-            }
-        } else {
-            return toProblems(syntacticDiagnostics);
-        }
+         return program.getSyntacticDiagnostics()
+             .concat(program.getGlobalDiagnostics())
+             .concat(program.getSemanticDiagnostics()).
+             map(parseDiagnostic)
     }
 
     function toProblems(diagnostics:Diagnostic[]):Problem[] {
@@ -275,10 +270,47 @@ module st {
 
     }
 
-    interface SbtTypescriptOptions{
+    interface SbtTypescriptOptions {
         logLevel:string,
         tsconfig:any,
-        tsconfigFilename:string
+        tsconfigDir:string,
+        assetsDir:string
     }
 
+    //from jstranspiler
+    function parseArgs(args):Args {
+
+        const SOURCE_FILE_MAPPINGS_ARG = 2;
+        const TARGET_ARG = 3;
+        const OPTIONS_ARG = 4;
+
+        const cwd = process.cwd();
+
+        let sourceFileMappings;
+        try {
+            sourceFileMappings = JSON.parse(args[SOURCE_FILE_MAPPINGS_ARG]);
+        } catch (e) {
+            sourceFileMappings = [[
+                path.join(cwd, args[SOURCE_FILE_MAPPINGS_ARG]),
+                args[SOURCE_FILE_MAPPINGS_ARG]
+            ]];
+        }
+
+        let target = (args.length > TARGET_ARG ? args[TARGET_ARG] : path.join(cwd, "lib"));
+
+        let options;
+        if (target.length > 0 && target.charAt(0) === "{") {
+            options = JSON.parse(target);
+            target = path.join(cwd, "lib");
+        } else {
+            options = (args.length > OPTIONS_ARG ? JSON.parse(args[OPTIONS_ARG]) : {});
+        }
+
+        return <Args>{
+            sourceFileMappings: sourceFileMappings,
+            target: target,
+            options: options
+        };
+
+    }
 }

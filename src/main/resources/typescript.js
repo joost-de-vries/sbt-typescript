@@ -5,8 +5,8 @@ var st;
         function Logger(logLevel) {
             this.logLevel = logLevel;
         }
-        Logger.prototype.debug = function (message) { if (this.logLevel === 'debug')
-            console.log(message); };
+        Logger.prototype.debug = function (message, object) { if (this.logLevel === 'debug')
+            console.log(message, object); };
         Logger.prototype.info = function (message) { if (this.logLevel === 'debug' || this.logLevel === 'info')
             console.log(message); };
         Logger.prototype.warn = function (message) { if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn')
@@ -33,27 +33,27 @@ var st;
     var fs = require('fs');
     var typescript = require("typescript");
     var path = require("path");
-    var jst = require("jstranspiler");
-    var args = jst.args(process.argv);
+    var args = parseArgs(process.argv);
     var sbtTypescriptOpts = args.options;
     var logger = new Logger(sbtTypescriptOpts.logLevel);
     logger.debug("starting compile");
-    logger.debug("args=" + JSON.stringify(args));
+    logger.debug("args: ", args);
     logger.debug("target: " + args.target);
-    var compileResult = compile(args.sourceFileMappings, sbtTypescriptOpts);
+    var compileResult = compile(args.sourceFileMappings, sbtTypescriptOpts, args.target);
     compileDone(compileResult);
-    function compile(sourceMaps, options) {
-        var rootDir = calculateRootDir(sourceMaps);
+    function compile(sourceMaps, options, target) {
         var problems = [];
         var _a = toInputOutputFiles(sourceMaps), inputFiles = _a[0], outputFiles = _a[1];
         logger.debug("starting compilation of " + sourceMaps);
-        var confResult = typescript.parseConfigFileTextToJson(options.tsconfigFilename, JSON.stringify(options.tsconfig));
+        var confResult = typescript.parseConfigFileTextToJson(options.tsconfigDir, JSON.stringify(options.tsconfig));
         if (confResult.error)
             problems.push(parseDiagnostic(confResult.error));
         var results = [];
         if (confResult.config) {
-            logger.debug("options = " + JSON.stringify(confResult.config));
+            logger.debug("options: ", confResult.config);
             var compilerOptions = confResult.config.compilerOptions;
+            compilerOptions.rootDir = options.tsconfigDir;
+            compilerOptions.outDir = target;
             var compilerHost = typescript.createCompilerHost(compilerOptions);
             var program = typescript.createProgram(inputFiles, compilerOptions, compilerHost);
             problems.push.apply(problems, findGlobalProblems(program));
@@ -68,6 +68,18 @@ var st;
             problems: problems
         };
         return output;
+    }
+    function calculateRootDir(sourceMaps) {
+        if (sourceMaps.length) {
+            var inputFile = path.normalize(sourceMaps[0][0]);
+            var outputFile = path.normalize(sourceMaps[0][1]);
+            var rootDir = inputFile.substring(0, inputFile.length - outputFile.length);
+            console.log("rootdir is", rootDir);
+            return rootDir;
+        }
+        else {
+            return "";
+        }
     }
     function compileDone(compileResult) {
         console.log("\u0010" + JSON.stringify(compileResult));
@@ -95,7 +107,7 @@ var st;
                 var outputFileDeclaration = replaceFileExtension(outputFile, ".d.ts");
                 filesWritten.push(outputFileDeclaration);
             }
-            if (compilerOptions.sourceMap) {
+            if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
                 var outputFileMap = outputFile + ".map";
                 fixSourceMapFile(outputFileMap);
                 filesWritten.push(outputFileMap);
@@ -140,31 +152,11 @@ var st;
         sourceMap.sources = sourceMap.sources.map(function (source) { return path.basename(source); });
         fs.writeFileSync(file, JSON.stringify(sourceMap), 'utf-8');
     }
-    function calculateRootDir(sourceMaps) {
-        if (sourceMaps.length) {
-            var inputFile = path.normalize(sourceMaps[0][0]);
-            var outputFile = path.normalize(sourceMaps[0][1]);
-            return inputFile.substring(0, inputFile.length - outputFile.length);
-        }
-        else {
-            return "";
-        }
-    }
     function findGlobalProblems(program) {
-        var syntacticDiagnostics = program.getSyntacticDiagnostics();
-        if (syntacticDiagnostics.length === 0) {
-            var globalDiagnostics = program.getGlobalDiagnostics();
-            if (globalDiagnostics.length === 0) {
-                var semanticDiagnostics = program.getSemanticDiagnostics();
-                return toProblems(semanticDiagnostics);
-            }
-            else {
-                return toProblems(globalDiagnostics);
-            }
-        }
-        else {
-            return toProblems(syntacticDiagnostics);
-        }
+        return program.getSyntacticDiagnostics()
+            .concat(program.getGlobalDiagnostics())
+            .concat(program.getSemanticDiagnostics()).
+            map(parseDiagnostic);
     }
     function toProblems(diagnostics) {
         return diagnostics.map(parseDiagnostic);
@@ -203,5 +195,35 @@ var st;
         else {
             return "error";
         }
+    }
+    function parseArgs(args) {
+        var SOURCE_FILE_MAPPINGS_ARG = 2;
+        var TARGET_ARG = 3;
+        var OPTIONS_ARG = 4;
+        var cwd = process.cwd();
+        var sourceFileMappings;
+        try {
+            sourceFileMappings = JSON.parse(args[SOURCE_FILE_MAPPINGS_ARG]);
+        }
+        catch (e) {
+            sourceFileMappings = [[
+                    path.join(cwd, args[SOURCE_FILE_MAPPINGS_ARG]),
+                    args[SOURCE_FILE_MAPPINGS_ARG]
+                ]];
+        }
+        var target = (args.length > TARGET_ARG ? args[TARGET_ARG] : path.join(cwd, "lib"));
+        var options;
+        if (target.length > 0 && target.charAt(0) === "{") {
+            options = JSON.parse(target);
+            target = path.join(cwd, "lib");
+        }
+        else {
+            options = (args.length > OPTIONS_ARG ? JSON.parse(args[OPTIONS_ARG]) : {});
+        }
+        return {
+            sourceFileMappings: sourceFileMappings,
+            target: target,
+            options: options
+        };
     }
 })(st || (st = {}));
