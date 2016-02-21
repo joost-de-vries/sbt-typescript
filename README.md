@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/joost-de-vries/sbt-typescript.png?branch=master)](https://travis-ci.org/joost-de-vries/sbt-typescript)  
 
 This sbt plugin compiles Typescript code in your Play application.  
-The aim of this plugin is to make it possible to easily write Angular2 applications using the Play framework.  
+The aim of this plugin is to make it easy write Angular2 applications using the Play framework.  
 As such it
  - allows concatenating to a single output file. This is important for large applications.  
  - uses the standard `tsconfig.json` file for configuration. This has the advantage of allowing one to switch between `sbt-typescript` and `tsc`. And it publishes all the configuration options of `tsc`. Even the undocumented ones.
