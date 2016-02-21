@@ -1,20 +1,15 @@
 package name.devries.sbt.typescript
 
-import akka.event.Logging.LogLevel
+import java.io.File
+
 import com.typesafe.sbt.jse.JsEngineImport.JsEngineKeys
 import com.typesafe.sbt.jse.SbtJsTask
-import com.typesafe.sbt.web.{CompileProblems, LineBasedProblem}
-import sbt.Keys._
 import sbt._
+import sbt.Keys._
 import spray.json._
-import xsbti.Severity
-import com.typesafe.sbt.jse.SbtJsEngine.autoImport.JsEngineKeys._
 import com.typesafe.sbt.jse.SbtJsTask.autoImport.JsTaskKeys._
 import com.typesafe.sbt.web.Import.WebKeys._
 import com.typesafe.sbt.web.SbtWeb.autoImport._
-
-import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 object SbtTypescript extends AutoPlugin with JsonProtocol {
 
@@ -22,12 +17,12 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
 
   override def trigger = AllRequirements
 
+  /** the public api to a projects build.sbt*/
   object autoImport {
     val typescript = TaskKey[Seq[File]]("typescript", "Run Typescript compiler")
 
     val projectFile = SettingKey[File]("typescript-projectfile",
       "The location of the tsconfig.json  Default: <basedir>/tsconfig.json")
-    val getTsConfig = TaskKey[JsObject]("get-tsconfig", "parses the tsconfig.json file")
 
     val typingsFile = SettingKey[Option[File]]("typescript-typings-file", "A file that refers to typings that the build needs. Default None.")
 
@@ -38,6 +33,8 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
 
     val resolveFromWebjarsNodeModulesDir = SettingKey[Boolean]("typescript-resolve-modules-from-etc","Will use the directory to resolve modules ")
   }
+
+  val getTsConfig = TaskKey[JsObject]("get-tsconfig", "parses the tsconfig.json file")
 
   import autoImport._
 
@@ -80,7 +77,6 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     typescript in TestAssets := (typescript in TestAssets).dependsOn(webJarsNodeModules in TestAssets).value
   )
 
-
   def parseTsConfig() = Def.task {
     val tsConfigFile = projectFile.value
 
@@ -94,7 +90,6 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     string.replaceAll("""/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/""", "")
   }
 
-
   def optionalFields(m: Map[String, Option[JsValue]]): Map[String, JsValue] = {
     m.flatMap { case (s, oj) => oj match {
       case None => Map.empty[String, JsValue]
@@ -103,4 +98,3 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     }
   }
 }
-
