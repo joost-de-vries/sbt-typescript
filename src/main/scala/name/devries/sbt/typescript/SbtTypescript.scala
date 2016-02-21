@@ -43,7 +43,6 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
 
   // wrt to out vs outFile see https://github.com/Microsoft/TypeScript/issues/5107
   val typescriptUnscopedSettings = Seq(
-    logLevel := Level.Debug,
     includeFilter := GlobFilter("*.ts") | GlobFilter("*.tsx"),
     excludeFilter := GlobFilter("*.d.ts"),
     jsOptions := JsObject(Map(
@@ -63,6 +62,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     projectFile := baseDirectory.value / "tsconfig.json",
     typingsFile := None,
     resolveFromWebjarsNodeModulesDir := false,
+    logLevel in typescript := Level.Info,
     JsEngineKeys.parallelism := 1
   ) ++ inTask(typescript)(
     SbtJsTask.jsTaskSpecificUnscopedSettings ++
