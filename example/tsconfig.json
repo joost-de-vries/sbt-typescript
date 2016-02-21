@@ -3,6 +3,6 @@
     "module":"commonjs",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "traceModuleResolution": true
+    "noImplicitAny":true
   }
 }

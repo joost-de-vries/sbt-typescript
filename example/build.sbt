@@ -14,5 +14,7 @@ libraryDependencies ++= Seq(
   "org.webjars.npm" % "reflect-metadata" % "0.1.2",
   "org.webjars.npm" % "zone.js" % "0.5.15"
 )
+logLevel in typescript := Level.Debug
 
 typingsFile := Some(baseDirectory.value / "typings" / "browser.d.ts")
+resolveFromWebjarsNodeModulesDir := true
