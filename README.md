@@ -7,7 +7,7 @@ Also with this plugin the `outFile` typescript compiler option works.
 
 To use this plugin use the addSbtPlugin command within your project's plugins.sbt (or as a global setting) i.e.:
 
-    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.2.1")
+    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.2.1_01")
 
 Your project's build file also needs to enable sbt-web plugins. For example with build.sbt:
 
