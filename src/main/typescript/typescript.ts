@@ -184,7 +184,7 @@ function parseDiagnostic(d:Diagnostic):Problem {
     let problem = <Problem>{
         lineNumber: lineCol.line,
         characterOffset: lineCol.character,
-        message: d.code + " " + typescript.flattenDiagnosticMessageText(d.messageText, typescript.sys.newLine),
+        message: "TS" + d.code + " " + typescript.flattenDiagnosticMessageText(d.messageText, typescript.sys.newLine),
         source: fileName,
         severity: toSeverity(d.category),
         lineContent: lineText
