@@ -1,7 +1,6 @@
-#sbt-typescript
-This sbt plugin compiles Typescript code in your Play application.  
-[![Build Status](https://travis-ci.org/joost-de-vries/sbt-typescript.png?branch=master)](https://travis-ci.org/joost-de-vries/sbt-typescript)  
-
+#sbt-typescript [![Build Status](https://travis-ci.org/joost-de-vries/sbt-typescript.png?branch=master)](https://travis-ci.org/joost-de-vries/sbt-typescript)
+This sbt plugin compiles the Typescript code in your Play application.  
+  
 ###introduction
 The aim of this plugin is to make it easy to write Angular2 applications using the Play framework.  
 As such it
