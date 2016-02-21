@@ -26,22 +26,26 @@ If your project is not a Play application it will have to enable `sbt-web` in `b
 
     lazy val root = (project in file(".")).enablePlugins(SbtWeb)
     
+####typings
 If you have a [typings](https://github.com/typings/typings) file you can add it like this:
 
     typingsFile := Some(baseDirectory.value / "typings" / "browser.d.ts")
     
 See `src/sbt-test/sbt-typescript/es6-es5` for an example.  
 
+####resolve against webjar npms
 If you want to resolve modules against [webjar npm](http://www.webjars.org/npm)s:
 
     resolveFromWebjarsNodeModulesDir := true
     
 This will use the npm webjar directory to resolve types of modules. See `src/sbt-test/sbt-typescript/angular2` for an example. Make sure to use npm webjars as your dependencies.  
 
+####import modules without type information
 If you are importing modules for which you don't have the typings you can ignore the TS2307 `can not find module` error:
 
     tsCodesToIgnore := List(canNotFindModule)
     
+####ignored compiler options
 The following `tsc` compiler options are managed by `sbt-typescript` so setting them in `tsconfig.json` has no effect: 
  - `outDir` and 
  - `rootDir`.  
@@ -53,4 +57,4 @@ There are some other features I'm planning to implement.
 ##history
 I started this plugin because the features I mentioned above were [missing](https://github.com/ArpNetworking/sbt-typescript/issues/1) in the [existing](https://github.com/ArpNetworking/sbt-typescript/issues/31) [plugins](https://github.com/ArpNetworking/sbt-typescript/issues/23#issuecomment-158099296).  
 And since I'd like Play and sbt(-web) to be kickass build tools for Typescript and Angular2 applications, and I wanted to give back to the open source community, I thought I'd implement it myself.. But not by writing javascript if I could just as well write Typescript...   
-Kudos to Brendan Arp for his [javascript tsc driver](https://github.com/ArpNetworking/sbt-typescript/blob/master/src/main/resources/typescriptc.js) to get me started. 
+Kudos to Brendan Arp for his [javascript tsc driver](https://github.com/ArpNetworking/sbt-typescript/blob/master/src/main/resources/typescriptc.js) to get me started. And also to all of the other plugins mentioned [here](https://github.com/sbt/sbt-web). Open source is an amazing tool for collective learning. Just imagine those poor programmers in the 1970s with only IBM manuals to provide them with information.
