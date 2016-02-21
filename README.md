@@ -42,6 +42,7 @@ If you are importing modules for which you don't have the typings you can ignore
 The following `tsc` compiler options are managed by `sbt-typescript` so setting them in `tsconfig.json` has no effect: `outDir` and `rootDir`.  
 
 ##history
-I started this plugin because the features I mentioned above where [missing](https://github.com/ArpNetworking/sbt-typescript/issues/1) in the [existing](https://github.com/ArpNetworking/sbt-typescript/issues/31) [plugins](https://github.com/ArpNetworking/sbt-typescript/issues/23#issuecomment-158099296).  And I'd like Play and sbt(-web) to be kickass build tools for Typescript and Angular2 applications. 
-Also I wanted to give back to the open source community. But not by writing javascript if I could just as well write Typescript. :smile: 
+I started this plugin because the features I mentioned above were [missing](https://github.com/ArpNetworking/sbt-typescript/issues/1) in the [existing](https://github.com/ArpNetworking/sbt-typescript/issues/31) [plugins](https://github.com/ArpNetworking/sbt-typescript/issues/23#issuecomment-158099296).  
+And I'd like Play and sbt(-web) to be kickass build tools for Typescript and Angular2 applications. 
+Also I wanted to give back to the open source community. But not by writing javascript if I could just as well write Typescript...   
 Kudos to Brendan Arp for his [javascript tsc driver](https://github.com/ArpNetworking/sbt-typescript/blob/master/src/main/resources/typescriptc.js) to get me started. 
