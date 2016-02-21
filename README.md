@@ -30,11 +30,13 @@ If you have a typings file you can add it like this:
     typingsFile := Some(baseDirectory.value / "typings" / "browser.d.ts")
     
 See `src/sbt-test/sbt-typescript/es6-es5` for an example.  
+
 If you want to resolve modules against webjar npms:
 
     resolveFromWebjarsNodeModulesDir := true
     
 This will use the npm webjar directory to resolve types of modules. See `src/sbt-test/sbt-typescript/angular2` for an example. Make sure to use npm webjars as your dependencies.  
+
 If you are importing modules for which you don't have the typings you can ignore the `can not find module` error:
 
     tsCodesToIgnore := List(canNotFindModule)
