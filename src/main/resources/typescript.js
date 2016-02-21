@@ -4,8 +4,10 @@ var Logger = (function () {
         this.logLevel = logLevel;
     }
     Logger.prototype.debug = function (message, object) {
-        if (this.logLevel === 'debug')
+        if (this.logLevel === 'debug' && object)
             console.log(message, object);
+        else if (this.logLevel === 'debug')
+            console.log(message);
     };
     Logger.prototype.info = function (message) {
         if (this.logLevel === 'debug' || this.logLevel === 'info')
@@ -43,34 +45,38 @@ var sbtTypescriptOpts = args.options;
 var logger = new Logger(sbtTypescriptOpts.logLevel);
 logger.debug("starting compile of ", args.sourceFileMappings.map(function (a) { return a[1]; }));
 logger.debug("from ", sbtTypescriptOpts.assetsDir);
+logger.debug("args ", args);
 var compileResult = compile(args.sourceFileMappings, sbtTypescriptOpts, args.target);
 compileDone(compileResult);
 function compile(sourceMaps, options, target) {
     var problems = [];
     var _a = toInputOutputFiles(sourceMaps), inputFiles = _a[0], outputFiles = _a[1];
-    var confResult = typescript.parseConfigFileTextToJson(options.tsconfigDir, JSON.stringify(options.tsconfig));
+    var unparsedCompilerOptions = options.tsconfig["compilerOptions"];
+    logger.debug("compilerOptions ", unparsedCompilerOptions);
+    var tsConfig = typescript.convertCompilerOptionsFromJson(unparsedCompilerOptions, options.tsconfigDir, "tsconfig.json");
     var results = [];
-    if (confResult.error)
-        problems.push(parseDiagnostic(confResult.error));
-    else if (confResult.config) {
-        logger.debug("options ", confResult.config.compilerOptions);
-        var compilerOptions = confResult.config.compilerOptions;
-        compilerOptions.rootDir = sbtTypescriptOpts.assetsDir;
-        compilerOptions.outDir = target;
+    if (tsConfig.errors.length > 0) {
+        logger.debug("errors during parsing of compilerOptions", tsConfig.errors);
+        problems.push.apply(problems, toProblems(tsConfig.errors, options.tsCodesToIgnore));
+    }
+    else {
+        tsConfig.options.rootDir = sbtTypescriptOpts.assetsDir;
+        tsConfig.options.outDir = target;
         var resolutionDirs = [];
         if (sbtTypescriptOpts.resolveFromNodeModulesDir)
             resolutionDirs.push(sbtTypescriptOpts.nodeModulesDir);
-        var compilerHost = createCompilerHost(compilerOptions, resolutionDirs);
+        var compilerHost = createCompilerHost(tsConfig.options, resolutionDirs);
         var filesToCompile = inputFiles;
         if (sbtTypescriptOpts.extraFiles)
             filesToCompile = inputFiles.concat(sbtTypescriptOpts.extraFiles);
-        var program = typescript.createProgram(filesToCompile, compilerOptions, compilerHost);
+        var program = typescript.createProgram(filesToCompile, tsConfig.options, compilerHost);
+        logger.debug("created program");
         problems.push.apply(problems, findGlobalProblems(program, options.tsCodesToIgnore));
         var emitOutput = program.emit();
         problems.push.apply(problems, toProblems(emitOutput.diagnostics, options.tsCodesToIgnore));
         var sourceFiles = program.getSourceFiles();
         logger.debug("program sourcefiles ", sourceFiles.length);
-        results = flatten(sourceFiles.map(toCompilationResult(inputFiles, outputFiles, compilerOptions, logger)));
+        results = flatten(sourceFiles.map(toCompilationResult(inputFiles, outputFiles, tsConfig.options, logger)));
     }
     function flatten(xs) {
         var result = [];
@@ -85,18 +91,6 @@ function compile(sourceMaps, options, target) {
         problems: problems
     };
     return output;
-}
-function calculateRootDir(sourceMaps) {
-    if (sourceMaps.length) {
-        var inputFile = path.normalize(sourceMaps[0][0]);
-        var outputFile = path.normalize(sourceMaps[0][1]);
-        var rootDir = inputFile.substring(0, inputFile.length - outputFile.length);
-        console.log("rootdir is", rootDir);
-        return rootDir;
-    }
-    else {
-        return "";
-    }
 }
 function compileDone(compileResult) {
     console.log("\u0010" + JSON.stringify(compileResult));
@@ -264,9 +258,13 @@ function createCompilerHost(options, moduleSearchLocations) {
                 var modulePath = path.join(location_1, moduleName + ".d.ts");
                 if (cHost.fileExists(modulePath)) {
                     var resolvedModule = { resolvedFileName: modulePath };
+                    if (logger.logLevel === "debug")
+                        logger.debug("found in extra location ", resolvedModule);
                     return resolvedModule;
                 }
                 else {
+                    if (logger.logLevel === "warn")
+                        logger.warn("gave up");
                 }
             }
             return undefined;

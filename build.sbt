@@ -6,7 +6,7 @@ version := "0.2.1"
 homepage := Some(url("https://github.com/joost-de-vries/sbt-typescript"))
 licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.10.6"
 scalacOptions += "-feature"
 
 libraryDependencies ++= Seq(
