@@ -4,8 +4,6 @@
 - explore noresolve option
 
 todo:
-create testproject that uses import {} from dependencies
-add .d.ts files from webjars
 if outfile normalise path
 
 

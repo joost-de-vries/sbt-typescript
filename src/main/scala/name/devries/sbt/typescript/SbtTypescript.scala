@@ -35,6 +35,8 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       "The tsc error codes (f.i. TS2307) to ignore. Default empty list.")
 
     val canNotFindModule = 2307 //see f.i. https://github.com/Microsoft/TypeScript/issues/3808
+
+    val resolveFromWebjarsNodeModulesDir = SettingKey[Boolean]("typescript-resolve-modules-from-etc","Will use the directory to resolve modules ")
   }
 
   import autoImport._
@@ -49,7 +51,9 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       "tsconfig" -> parseTsConfig().value,
       "tsconfigDir" -> JsString(projectFile.value.getParent),
       "assetsDir" -> JsString((sourceDirectory in Assets).value.getAbsolutePath),
-      "tsCodesToIgnore" -> JsArray(tsCodesToIgnore.value.toVector.map(JsNumber(_)))
+      "tsCodesToIgnore" -> JsArray(tsCodesToIgnore.value.toVector.map(JsNumber(_))),
+      "nodeModulesDir" -> JsString(webJarsNodeModulesDirectory.value.getAbsolutePath),
+      "resolveFromNodeModulesDir" -> JsBoolean(resolveFromWebjarsNodeModulesDir.value)
     ) ++ optionalFields(Map("extraFiles" -> typingsFile.value.map(tf => JsArray(JsString(tf.getCanonicalPath)))))
     ).toString()
   )
@@ -58,6 +62,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     tsCodesToIgnore := List.empty[Int],
     projectFile := baseDirectory.value / "tsconfig.json",
     typingsFile := None,
+    resolveFromWebjarsNodeModulesDir := false,
     JsEngineKeys.parallelism := 1
   ) ++ inTask(typescript)(
     SbtJsTask.jsTaskSpecificUnscopedSettings ++
@@ -71,8 +76,8 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
         taskMessage in TestAssets := "Typescript test compiling"
       )
   ) ++ SbtJsTask.addJsSourceFileTasks(typescript) ++ Seq(
-    typescript in Assets := (typescript in Assets).dependsOn(webModules in Assets).value,
-    typescript in TestAssets := (typescript in TestAssets).dependsOn(webModules in TestAssets).value
+    typescript in Assets := (typescript in Assets).dependsOn(webJarsNodeModules in Assets).value,
+    typescript in TestAssets := (typescript in TestAssets).dependsOn(webJarsNodeModules in TestAssets).value
   )
 
 

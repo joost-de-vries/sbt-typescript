@@ -37,29 +37,30 @@ var Logger = (function () {
 var fs = require('fs');
 var typescript = require("typescript");
 var path = require("path");
+var mkdirp = require("mkdirp");
 var args = parseArgs(process.argv);
 var sbtTypescriptOpts = args.options;
 var logger = new Logger(sbtTypescriptOpts.logLevel);
-logger.debug("starting compile");
-logger.debug("args: ", args);
-logger.debug("target: " + args.target);
+logger.debug("starting compile of ", args.sourceFileMappings.map(function (a) { return a[1]; }));
+logger.debug("from ", sbtTypescriptOpts.assetsDir);
 var compileResult = compile(args.sourceFileMappings, sbtTypescriptOpts, args.target);
 compileDone(compileResult);
 function compile(sourceMaps, options, target) {
     var problems = [];
     var _a = toInputOutputFiles(sourceMaps), inputFiles = _a[0], outputFiles = _a[1];
-    logger.debug("starting compilation of " + sourceMaps);
-    logger.debug("compiler options: ", options.tsconfig);
     var confResult = typescript.parseConfigFileTextToJson(options.tsconfigDir, JSON.stringify(options.tsconfig));
     var results = [];
     if (confResult.error)
         problems.push(parseDiagnostic(confResult.error));
     else if (confResult.config) {
-        logger.debug("parsed compiler options: ", confResult.config);
+        logger.debug("options ", confResult.config.compilerOptions);
         var compilerOptions = confResult.config.compilerOptions;
         compilerOptions.rootDir = sbtTypescriptOpts.assetsDir;
         compilerOptions.outDir = target;
-        var compilerHost = typescript.createCompilerHost(compilerOptions);
+        var resolutionDirs = [];
+        if (sbtTypescriptOpts.resolveFromNodeModulesDir)
+            resolutionDirs.push(sbtTypescriptOpts.nodeModulesDir);
+        var compilerHost = createCompilerHost(compilerOptions, resolutionDirs);
         var filesToCompile = inputFiles;
         if (sbtTypescriptOpts.extraFiles)
             filesToCompile = inputFiles.concat(sbtTypescriptOpts.extraFiles);
@@ -68,7 +69,7 @@ function compile(sourceMaps, options, target) {
         var emitOutput = program.emit();
         problems.push.apply(problems, toProblems(emitOutput.diagnostics, options.tsCodesToIgnore));
         var sourceFiles = program.getSourceFiles();
-        logger.debug("got some source files " + JSON.stringify(sourceFiles.map(function (sf) { return sf.fileName; })));
+        logger.debug("program sourcefiles ", sourceFiles.length);
         results = flatten(sourceFiles.map(toCompilationResult(inputFiles, outputFiles, compilerOptions, logger)));
     }
     function flatten(xs) {
@@ -98,7 +99,6 @@ function calculateRootDir(sourceMaps) {
     }
 }
 function compileDone(compileResult) {
-    console.log(JSON.stringify(compileResult));
     console.log("\u0010" + JSON.stringify(compileResult));
 }
 function toInputOutputFiles(sourceMaps) {
@@ -169,7 +169,6 @@ function toCompilationResult(inputFiles, outputFiles, compilerOptions, logger) {
     return function (sourceFile) {
         var index = inputFiles.indexOf(path.normalize(sourceFile.fileName));
         if (index === -1) {
-            logger.debug("did not find source file " + sourceFile.fileName + " in list compile list, assuming library or dependency and skipping output");
             return {};
         }
         var deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(function (f) { return f.fileName; }));
@@ -184,6 +183,7 @@ function toCompilationResult(inputFiles, outputFiles, compilerOptions, logger) {
             fixSourceMapFile(outputFileMap);
             filesWritten.push(outputFileMap);
         }
+        console.log("files written ", filesWritten);
         var result = {
             source: sourceFile.fileName,
             result: {
@@ -246,4 +246,30 @@ function replaceFileExtension(file, ext) {
     var path = require("path");
     var oldExt = path.extname(file);
     return file.substring(0, file.length - oldExt.length) + ext;
+}
+function createCompilerHost(options, moduleSearchLocations) {
+    var cHost = typescript.createCompilerHost(options);
+    cHost.resolveModuleNames = resolveModuleNames;
+    return cHost;
+    function resolveModuleNames(moduleNames, containingFile) {
+        return moduleNames.map(function (moduleName) {
+            var result = typescript.resolveModuleName(moduleName, containingFile, options, cHost);
+            if (result.resolvedModule) {
+                return result.resolvedModule;
+            }
+            else {
+            }
+            for (var _i = 0, moduleSearchLocations_1 = moduleSearchLocations; _i < moduleSearchLocations_1.length; _i++) {
+                var location_1 = moduleSearchLocations_1[_i];
+                var modulePath = path.join(location_1, moduleName + ".d.ts");
+                if (cHost.fileExists(modulePath)) {
+                    var resolvedModule = { resolvedFileName: modulePath };
+                    return resolvedModule;
+                }
+                else {
+                }
+            }
+            return undefined;
+        });
+    }
 }
