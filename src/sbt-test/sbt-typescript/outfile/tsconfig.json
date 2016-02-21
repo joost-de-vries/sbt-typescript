@@ -5,7 +5,7 @@
     "noImplicitAny": true,
     "removeComments": true,
     "preserveConstEnums": true,
-    "outFile": "target/tsc.js",
+    "outFile": "target/outFile.js",
     "sourceMap": true,
     "charset": "utf8"
   },

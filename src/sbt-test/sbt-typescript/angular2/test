@@ -1,0 +1,3 @@
+# check handling of outFile setting
+> assets
+$ exists target/web/public/main/app/app.js

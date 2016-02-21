@@ -1,7 +1,7 @@
 sbtPlugin := true
 organization := "name.de-vries"
 name := "sbt-typescript"
-version := "0.2.0"
+version := "0.2.1"
 
 homepage := Some(url("https://github.com/joost-de-vries/sbt-typescript"))
 licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
@@ -11,7 +11,7 @@ scalacOptions += "-feature"
 
 libraryDependencies ++= Seq(
   "org.webjars.npm" % "typescript" % "1.8.0",
-  "com.typesafe" % "jstranspiler" % "1.0.0"
+  "org.webjars" % "mkdirp" % "0.3.5"
 )
 
 resolvers ++= Seq(
