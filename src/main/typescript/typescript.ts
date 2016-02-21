@@ -233,7 +233,7 @@ export function toCompilationResult(inputFiles:string[], outputFiles:string[], c
             filesWritten.push(outputFileMap);
         }
 
-        console.log("files written ", filesWritten)
+        logger.debug("files written ", filesWritten)
         const result = <CompilationFileResult>{
             source: sourceFile.fileName,
             result: {
