@@ -177,7 +177,7 @@ function toCompilationResult(inputFiles, outputFiles, compilerOptions, logger) {
             fixSourceMapFile(outputFileMap);
             filesWritten.push(outputFileMap);
         }
-        console.log("files written ", filesWritten);
+        logger.debug("files written ", filesWritten);
         var result = {
             source: sourceFile.fileName,
             result: {
