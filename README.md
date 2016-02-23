@@ -19,7 +19,7 @@ I've made an activator tutorial template to get you started. If you have activat
 Create a `tsconfig.json` file in the root of your project with the required [compiler options](https://github.com/Microsoft/TypeScript/wiki/Compiler-Options).  
 Add the following line to your `project\plugins.sbt`:
 
-    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.2.1_01")
+    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.2.1_02")
 
 If your project is not a Play application it will have to enable `sbt-web` in `build.sbt`:
 
