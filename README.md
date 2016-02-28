@@ -22,7 +22,7 @@ I've made an activator tutorial template to get you started. If you have activat
 Create a `tsconfig.json` file in the root of your project with the required [compiler options](https://github.com/Microsoft/TypeScript/wiki/Compiler-Options).  
 Add the following line to your `project\plugins.sbt`:
 
-    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.2.1_02")
+    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.2.2")
 
 If your project is not a Play application it will have to enable `sbt-web` in `build.sbt`:
 
@@ -67,4 +67,4 @@ Kudos to Brendan Arp for his [javascript tsc driver](https://github.com/ArpNetwo
 - upgrades to typescript 1.8.2
 - improves output of single outfile
 - fixes a nasty bug in module resolution. This is essential for angular2 applications.
-- gives feedback on faulty configuration settings of the typescript compiler.
+- gives feedback on faulty compiler options.
