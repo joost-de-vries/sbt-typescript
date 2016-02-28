@@ -5,7 +5,10 @@ This sbt plugin compiles the Typescript code in your Play application to javascr
 The aim of this plugin is to make it easy to write Angular2 applications using the Play framework.  
 As such it
  - [x] allows transpiling to a single output file. This is important for large applications. At least for as long as http2 isn't prevalent.
- - [x] uses the standard `tsconfig.json` file for configuration. Most editors and IDEs use this file to resolve types in the typescript code you're writing. Also it has the advantage of allowing you to switch between `sbt-typescript` and `tsc`. And it allows setting of all `tsc` options. Even the undocumented ones.
+ - [x] uses the standard `tsconfig.json` file for configuration. 
+  - Most editors and IDEs use this file to resolve types in the typescript code you're writing. 
+  - Also it allows setting of all `tsc` options. Even the undocumented ones. 
+  - And it allows you to switch between `sbt-typescript` and `tsc`.
  - [x] allows resolution of module imports against webjars. Since every Angular2 application uses ES6 module imports this is obviously an important requirement.
  - [x] allows for including typings files in the build. This is essential for compilation to ES5 because the standard ES5 lib doesn't have some types that f.i. Angular2 needs. These types are offered for ES5 by ao ES6-shims.
  - [x] allows for suppression of compilation errors. This may seem strange to people coming from conventional statically typed languages. But the `tsc` lives in an untyped world. So it _will_ emit perfectly functional code even if some types can't be checked. Suppression of a specific error is particularly useful if one's using a library for which type information is not available. 
