@@ -67,3 +67,4 @@ Kudos to Brendan Arp for his [javascript tsc driver](https://github.com/ArpNetwo
 - upgrades to typescript 1.8.2
 - improves output of single outfile
 - fixes a nasty bug in module resolution. This is essential for angular2 applications.
+- gives feedback on faulty configuration settings of the typescript compiler.
