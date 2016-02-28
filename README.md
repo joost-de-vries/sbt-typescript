@@ -5,12 +5,12 @@ This sbt plugin compiles the Typescript code in your Play application to javascr
 The aim of this plugin is to make it easy to write Angular2 applications using the Play framework.  
 As such it
  - [x] allows transpiling to a single output file. This is important for large applications. At least for as long as http2 isn't prevalent.
- - [x] uses the standard `tsconfig.json` file for configuration. This has the advantage of allowing one to switch between `sbt-typescript` and `tsc`. And it publishes all the configuration options of `tsc`. Even the undocumented ones.
- - [x] allows for including typings files in the build. This is essential for compilation to ES5 because the standard ES5 lib doesn't have some types that f.i. Angular2 needs. These types are offered for ES5 by ao ES6-shims.
+ - [x] uses the standard `tsconfig.json` file for configuration. Most editors and IDEs use this file to resolve types in the typescript code you're writing. Also it has the advantage of allowing you to switch between `sbt-typescript` and `tsc`. And it allows setting of all `tsc` options. Even the undocumented ones.
  - [x] allows resolution of module imports against webjars. Since every Angular2 application uses ES6 module imports this is obviously an important requirement.
+ - [x] allows for including typings files in the build. This is essential for compilation to ES5 because the standard ES5 lib doesn't have some types that f.i. Angular2 needs. These types are offered for ES5 by ao ES6-shims.
  - [x] allows for suppression of compilation errors. This may seem strange to people coming from conventional statically typed languages. But the `tsc` lives in an untyped world. So it _will_ emit perfectly functional code even if some types can't be checked. Suppression of a specific error is particularly useful if one's using a library for which type information is not available. 
- - [x] uses Typescript 1.8.0
- - [x]  JS parts are written in Typescript.
+ - [x] uses Typescript 1.8.2
+ - [x] JS parts are written in Typescript.
  
 ###getting started with Typescript and Angular2
 I've made an activator tutorial template to get you started. If you have activator installed you can run `activator new play-angular2-typescript`.  Or you can just clone the [repo](https://github.com/joost-de-vries/play-angular2-typescript).  
@@ -57,3 +57,10 @@ There are some other features I'm planning to implement.
 I started this plugin because the features I mentioned above were [missing](https://github.com/ArpNetworking/sbt-typescript/issues/1) in the [existing](https://github.com/ArpNetworking/sbt-typescript/issues/31) [plugins](https://github.com/ArpNetworking/sbt-typescript/issues/23#issuecomment-158099296).  
 And since I'd like Play and sbt(-web) to be kickass build tools for Typescript and Angular2 applications, and I wanted to give back to the open source community, I thought I'd implement it myself.. But not by writing javascript if I could just as well write Typescript...   
 Kudos to Brendan Arp for his [javascript tsc driver](https://github.com/ArpNetworking/sbt-typescript/blob/master/src/main/resources/typescriptc.js) to get me started. And also to all of the other plugins mentioned [here](https://github.com/sbt/sbt-web). Open source is an amazing tool for collective learning. Just imagine those poor programmers in the 1970s with only IBM manuals to provide them with information.
+
+###release notes
+
+#### v2.2.0 
+- upgrades to typescript 1.8.2
+- improves output of single outfile
+- fixes a nasty bug in module resolution. This is essential for angular2 applications.

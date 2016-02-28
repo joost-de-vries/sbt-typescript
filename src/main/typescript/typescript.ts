@@ -1,15 +1,23 @@
 /* global process, require */
+/// <reference path="../../../typings/main.d.ts" />
 // inspired by https://github.com/ArpNetworking/sbt-typescript/blob/master/src/main/resources/typescriptc.js
-import {Program,Diagnostic,SourceFile,CompilerOptions,DiagnosticMessageChain,DiagnosticCategory,CompilerHost,ResolvedModule,ScriptTarget} from 'typescript'
+import {Program,Diagnostic,SourceFile,CompilerOptions,DiagnosticMessageChain,DiagnosticCategory,CompilerHost,ResolvedModule,ScriptTarget} from "typescript"
+
+const fs = require("fs")
+const ts = require("typescript");
+const path = require("path");
 
 
 class Logger {
+    public isDebug:boolean
+
     constructor(public logLevel:string) {
+        this.isDebug = 'debug' === this.logLevel
     }
 
     debug(message:string, object?:any) {
-        if (this.logLevel === 'debug'&&object)console.log(message, object)
-        else if(this.logLevel ==='debug') console.log(message)
+        if (this.logLevel === 'debug' && object)console.log(message, object)
+        else if (this.logLevel === 'debug') console.log(message)
     }
 
     info(message:string) {
@@ -38,61 +46,165 @@ class Logger {
     }
 }
 
-const fs = require('fs');
-const typescript = require("typescript");
-const path = require("path");
-const mkdirp = require("mkdirp")
-
 const args:Args = parseArgs(process.argv);
-
 const sbtTypescriptOpts:SbtTypescriptOptions = args.options
 
 const logger = new Logger(sbtTypescriptOpts.logLevel);
-logger.debug("starting compile of ", args.sourceFileMappings.map((a)=> a[1]));
+const logModuleResolution = false
+
+interface Option<T> {
+    value?: T
+    foreach(f:(t:T)=>any): any
+    map<B> (f:(t:T)=>B):Option<B>
+
+}
+
+class Some<T> {
+    constructor(public value:T) {
+    }
+
+    foreach(f:(t:T)=>any) {
+        return f(this.value)
+    }
+
+    map<B> (f:(t:T)=>B):Option<B> {
+        return new Some(f(this.value))
+    }
+}
+class None<T> implements Option<T> {
+    foreach(f:(t:T)=>any) {
+    }
+
+    map<B> (f:(t:T)=>B):Option<B> {
+        return new None<B>()
+    }
+}
+
+
+class SourceMapping {
+    public absolutePath:string
+    public relativePath:string
+
+    constructor(a:string[]) {
+        this.absolutePath = a[0]
+        this.relativePath = a[1]
+    }
+
+    normalizedAbsolutePath():string {
+        return path.normalize(this.absolutePath)
+    }
+
+    toOutputPath(targetDir:string, extension:string) {
+        return path.join(targetDir,
+            replaceFileExtension(path.normalize(this.relativePath), extension)
+        );
+    }
+}
+
+class SourceMappings {
+    public mappings:SourceMapping[]
+    private absolutePaths:string[]
+
+    constructor(sourceFileMappings:string[][]) {
+        this.mappings = sourceFileMappings.map((a)=> new SourceMapping(a))
+    }
+
+    asAbsolutePaths():string[] {
+        if (!this.absolutePaths) {
+            this.absolutePaths = this.mappings.map((sm)=> sm.normalizedAbsolutePath())
+        }
+        return this.absolutePaths
+    }
+
+
+    find(sf:SourceFile):Option<SourceMapping> {
+        const absPath = path.normalize(sf.fileName)
+        const index = this.asAbsolutePaths().indexOf(absPath)
+        if (index != -1) {
+            return new Some(this.mappings[index])
+
+        } else {
+//            logger.error("did not find '"+absPath+"'")
+            return new None()
+        }
+    }
+}
+
+const sourceMappings = new SourceMappings(args.sourceFileMappings)
+
+logger.debug("starting compilation of ", sourceMappings.mappings.map((sm)=> sm.relativePath));
 logger.debug("from ", sbtTypescriptOpts.assetsDir);
+logger.debug("to ", args.target)
 logger.debug("args ", args)
 
-const compileResult = compile(args.sourceFileMappings, sbtTypescriptOpts, args.target)
+const compileResult = compile(sourceMappings, sbtTypescriptOpts, args.target)
 compileDone(compileResult)
 
-function compile(sourceMaps:string[][], options:SbtTypescriptOptions, target:string):CompilationResult {
+function compile(sourceMaps:SourceMappings, options:SbtTypescriptOptions, target:string):CompilationResult {
     const problems:Problem[] = []
+    const targetDir = determineTargetAssetsDir(options)
 
-    let [inputFiles,outputFiles]=toInputOutputFiles(sourceMaps)
-
-    const unparsedCompilerOptions = options.tsconfig["compilerOptions"]
-    logger.debug("compilerOptions ", unparsedCompilerOptions)
-    const tsConfig = typescript.convertCompilerOptionsFromJson(unparsedCompilerOptions, options.tsconfigDir, "tsconfig.json");
+    const unparsedCompilerOptions:any = options.tsconfig["compilerOptions"]
+    //logger.debug("compilerOptions ", unparsedCompilerOptions)
+        if (unparsedCompilerOptions.outFile) {
+        const outFile = path.join(targetDir,path.basename(unparsedCompilerOptions.outFile))
+        logger.debug("single outFile ",outFile)
+        unparsedCompilerOptions.outFile= outFile
+        }
+        unparsedCompilerOptions.rootDir = options.tsconfigDir
+    const tsConfig = ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, options.tsconfigDir, "tsconfig.json");
     let results:CompilationFileResult[] = []
     if (tsConfig.errors.length > 0) {
         logger.debug("errors during parsing of compilerOptions", tsConfig.errors)
         problems.push(...toProblems(tsConfig.errors, options.tsCodesToIgnore))
     }
     else {
-        //logger.debug("options ", tsConfig.options);
-
-        tsConfig.options.rootDir = sbtTypescriptOpts.assetsDir
         tsConfig.options.outDir = target;
 
         let resolutionDirs:string[] = []
         if (sbtTypescriptOpts.resolveFromNodeModulesDir) resolutionDirs.push(sbtTypescriptOpts.nodeModulesDir)
+        logger.debug("using tsc options ", tsConfig.options);
         const compilerHost = createCompilerHost(tsConfig.options, resolutionDirs);
 
-        let filesToCompile = inputFiles
-        if (sbtTypescriptOpts.extraFiles) filesToCompile = inputFiles.concat(sbtTypescriptOpts.extraFiles)
+        let filesToCompile = sourceMaps.asAbsolutePaths()
+        if (sbtTypescriptOpts.extraFiles) filesToCompile = filesToCompile.concat(sbtTypescriptOpts.extraFiles)
 
-        const program:Program = typescript.createProgram(filesToCompile, tsConfig.options, compilerHost);
+        const program:Program = ts.createProgram(filesToCompile, tsConfig.options, compilerHost);
         logger.debug("created program")
-        problems.push(...findGlobalProblems(program, options.tsCodesToIgnore))
+        problems.push(...findPreemitProblems(program, options.tsCodesToIgnore))
 
         const emitOutput = program.emit();
+
         problems.push(...toProblems(emitOutput.diagnostics, options.tsCodesToIgnore));
 
-        const sourceFiles:SourceFile[] = program.getSourceFiles();
-        logger.debug("program sourcefiles ", sourceFiles.length)//+ JSON.stringify(sourceFiles.map(sf => sf.fileName)));
+        if (logger.isDebug) {
+            const declarationFiles = program.getSourceFiles().filter(isDeclarationFile)
+            logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.")
+        }
 
-        results = flatten(sourceFiles.map(toCompilationResult(inputFiles, outputFiles, tsConfig.options, logger)));
+        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, tsConfig.options, targetDir)));
+    }
 
+    logger.debug("files written", results.map((r)=> r.result.filesWritten))
+
+    const output = <CompilationResult>{
+        results: results,
+        problems: problems
+    };
+    return output;
+
+    function determineTargetAssetsDir(options:SbtTypescriptOptions) {
+        const assetsRelDir = options.assetsDir.substring(options.tsconfigDir.length, options.assetsDir.length)
+        return path.join(target, assetsRelDir)
+    }
+
+    function isCodeFile(f:SourceFile) {
+        return !(isDeclarationFile(f))
+    }
+
+    function isDeclarationFile(f:SourceFile) {
+        const fileName = f.fileName
+        return ".d.ts" === fileName.substring(fileName.length - 5)
     }
 
     function flatten<T>(xs:Option<T>[]):T[] {
@@ -102,14 +214,41 @@ function compile(sourceMaps:string[][], options:SbtTypescriptOptions, target:str
         })
         return result
     }
-
-
-    const output = <CompilationResult>{
-        results: results,
-        problems: problems
-    };
-    return output;
 }
+
+function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:CompilerOptions, targetDir:string):(sf:SourceFile)=> Option<CompilationFileResult> {
+    return sourceFile => {
+        return sourceMappings.find(sourceFile).map((sm)=> {
+            //logger.debug("source file is ",sourceFile.fileName)
+            let deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(f => f.fileName));
+
+            let outputFile = determineOutFile(sm.toOutputPath(targetDir, ".js"), compilerOptions, targetDir);
+
+            let filesWritten = [outputFile];
+
+            if (compilerOptions.declaration) {
+                let outputFileDeclaration = sm.toOutputPath(targetDir, ".d.ts");
+                filesWritten.push(outputFileDeclaration);
+            }
+
+            if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
+                let outputFileMap = outputFile + ".map";
+                fixSourceMapFile(outputFileMap);
+                filesWritten.push(outputFileMap);
+            }
+
+            const result = <CompilationFileResult>{
+                source: sourceFile.fileName,
+                result: {
+                    filesRead: deps,
+                    filesWritten: filesWritten
+                }
+            };
+            return result
+        })
+    }
+}
+
 
 interface CompilationResult {
     results: CompilationFileResult[]
@@ -122,24 +261,6 @@ function compileDone(compileResult:CompilationResult) {
     console.log("\u0010" + JSON.stringify(compileResult));
 }
 
-
-function toInputOutputFiles(sourceMaps:string[][]):[string[],string[]] {
-    const inputFiles:string[] = []
-    const outputFiles:string[] = []
-    sourceMaps.forEach((sourceMap) => {
-        const absolutFilePath = sourceMap[0]
-        const relativeFilePath = sourceMap[1]
-
-        inputFiles.push(path.normalize(absolutFilePath));
-
-        outputFiles.push(path.join(
-            args.target,
-            replaceFileExtension(path.normalize(relativeFilePath), ".js")
-        ));
-    });
-    return [inputFiles, outputFiles]
-}
-
 interface Problem {
     lineNumber: number
     characterOffset: number
@@ -150,10 +271,8 @@ interface Problem {
 }
 
 
-function findGlobalProblems(program:Program, tsIgnoreList?:number[]):Problem[] {
-    let diagnostics = program.getSyntacticDiagnostics()
-        .concat(program.getGlobalDiagnostics())
-        .concat(program.getSemanticDiagnostics())
+function findPreemitProblems(program:Program, tsIgnoreList?:number[]):Problem[] {
+    let diagnostics = ts.getPreEmitDiagnostics(program)
 
     if (tsIgnoreList) return diagnostics.filter(ignoreDiagnostic(tsIgnoreList)).map(parseDiagnostic)
     else return diagnostics.map(parseDiagnostic)
@@ -184,7 +303,7 @@ function parseDiagnostic(d:Diagnostic):Problem {
     let problem = <Problem>{
         lineNumber: lineCol.line,
         characterOffset: lineCol.character,
-        message: "TS" + d.code + " " + typescript.flattenDiagnosticMessageText(d.messageText, typescript.sys.newLine),
+        message: "TS" + d.code + " " + ts.flattenDiagnosticMessageText(d.messageText, ts.sys.newLine),
         source: fileName,
         severity: toSeverity(d.category),
         lineContent: lineText
@@ -202,54 +321,11 @@ function toSeverity(i:DiagnosticCategory):string {
     } else {
         return "error"
     }
-
 }
 
-/* compilation results */
-export function toCompilationResult(inputFiles:string[], outputFiles:string[], compilerOptions:CompilerOptions, logger:Logger):(sf:SourceFile)=> Option<CompilationFileResult> {
-    return sourceFile => {
-        let index = inputFiles.indexOf(path.normalize(sourceFile.fileName));
-        if (index === -1) {
-            //logger.debug("did not find source file " + sourceFile.fileName + " in list compile list, assuming library or dependency and skipping output");
-            return <Option<CompilationFileResult>>{
-                //none
-            };
-        }
-
-        let deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(f => f.fileName));
-
-        let outputFile = determineOutFile(outputFiles[index], compilerOptions, logger);
-
-        let filesWritten = [outputFile];
-
-        if (compilerOptions.declaration) {
-            let outputFileDeclaration = replaceFileExtension(outputFile, ".d.ts");
-            filesWritten.push(outputFileDeclaration);
-        }
-
-        if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
-            let outputFileMap = outputFile + ".map";
-            fixSourceMapFile(outputFileMap);
-            filesWritten.push(outputFileMap);
-        }
-
-        logger.debug("files written ", filesWritten)
-        const result = <CompilationFileResult>{
-            source: sourceFile.fileName,
-            result: {
-                filesRead: deps,
-                filesWritten: filesWritten
-            }
-        };
-        return <Option<CompilationFileResult>>{
-            value: result
-        };
-    }
-}
-
-function determineOutFile(outFile:string, options:CompilerOptions, logger:Logger):string {
+function determineOutFile(outFile:string, options:CompilerOptions, targetDir:string):string {
     if (options.outFile) {
-        logger.debug("single outFile")
+        logger.debug("single outFile ",options.outFile)
         return options.outFile
     } else {
         return outFile
@@ -262,7 +338,7 @@ function fixSourceMapFile(file:string) {
     fs.writeFileSync(file, JSON.stringify(sourceMap), 'utf-8');
 }
 
-export interface CompilationFileResult {
+interface CompilationFileResult {
     source: string
     result: {
         filesRead: string[]
@@ -270,13 +346,10 @@ export interface CompilationFileResult {
     }
 }
 
-export interface Option<T> {
-    value?: T
-}
 
 /** interfacing with sbt */
 //from jstranspiler
-export function parseArgs(args:string[]):Args {
+function parseArgs(args:string[]):Args {
 
     const SOURCE_FILE_MAPPINGS_ARG = 2;
     const TARGET_ARG = 3;
@@ -312,13 +385,13 @@ export function parseArgs(args:string[]):Args {
 
 }
 
-export interface Args {
+interface Args {
     sourceFileMappings:string[][]
     target:string
     options:SbtTypescriptOptions
 }
 
-export interface SbtTypescriptOptions {
+interface SbtTypescriptOptions {
     logLevel:string,
     tsconfig:CompilerOptions,
     tsconfigDir:string,
@@ -330,38 +403,37 @@ export interface SbtTypescriptOptions {
 }
 
 function replaceFileExtension(file:string, ext:string) {
-    const path = require("path");
     let oldExt = path.extname(file);
     return file.substring(0, file.length - oldExt.length) + ext;
 }
 
+
 function createCompilerHost(options:CompilerOptions, moduleSearchLocations:string[]):CompilerHost {
-    const cHost = typescript.createCompilerHost(options)
+    const cHost = ts.createCompilerHost(options)
     cHost.resolveModuleNames = resolveModuleNames
     return cHost
 
     function resolveModuleNames(moduleNames:string[], containingFile:string):ResolvedModule[] {
         return moduleNames.map(moduleName => {
             // try to use standard resolution
-            let result = typescript.resolveModuleName(moduleName, containingFile, options, cHost);
+            let result = ts.resolveModuleName(moduleName, containingFile, options, cHost);
             if (result.resolvedModule) {
                 //logger.debug("found ",result.resolvedModule)
                 return result.resolvedModule;
-            } else {
-                //logger.error("not found "+moduleName,containingFile)
             }
 
+            //logger.debug("try extra resolution dirs "+moduleName,moduleSearchLocations)
             // check fallback locations, for simplicity assume that module at location should be represented by '.d.ts' file
             for (const location of moduleSearchLocations) {
                 const modulePath = path.join(location, moduleName + ".d.ts");
                 if (cHost.fileExists(modulePath)) {
                     const resolvedModule = {resolvedFileName: modulePath}
-                    if (logger.logLevel === "debug") logger.debug("found in extra location ", resolvedModule)
+                    if (logger.logLevel === "debug" && logModuleResolution) logger.debug("found in extra location ", resolvedModule)
                     return resolvedModule
-                } else {
-                    if (logger.logLevel === "warn") logger.warn("gave up")
                 }
             }
+
+            if (logger.logLevel === "warn") logger.warn("could not find "+moduleName)
 
             return undefined;
         });

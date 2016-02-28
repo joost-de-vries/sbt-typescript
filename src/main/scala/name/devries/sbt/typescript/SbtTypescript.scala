@@ -35,6 +35,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
   }
 
   val getTsConfig = TaskKey[JsObject]("get-tsconfig", "parses the tsconfig.json file")
+  val typescriptWrapperTask = TaskKey[Seq[File]]("typescript-wrapper-task", "Wraps the typescript task to do post processing.")
 
   import autoImport._
 
@@ -60,6 +61,8 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     typingsFile := None,
     resolveFromWebjarsNodeModulesDir := false,
     logLevel in typescript := Level.Info,
+    typescriptWrapperTask in Assets:= moveFiles().value,
+    typescriptWrapperTask in TestAssets:= moveFiles().value,
     JsEngineKeys.parallelism := 1
   ) ++ inTask(typescript)(
     SbtJsTask.jsTaskSpecificUnscopedSettings ++
@@ -72,10 +75,55 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
         taskMessage in Assets := "Typescript compiling",
         taskMessage in TestAssets := "Typescript test compiling"
       )
-  ) ++ SbtJsTask.addJsSourceFileTasks(typescript) ++ Seq(
+  ) ++ addJsSourceFileTasks() ++ Seq(
     typescript in Assets := (typescript in Assets).dependsOn(webJarsNodeModules in Assets).value,
     typescript in TestAssets := (typescript in TestAssets).dependsOn(webJarsNodeModules in TestAssets).value
   )
+
+  /** adapted from SbtJsTask.addJsSourceFileTasks */
+  def addJsSourceFileTasks(): Seq[Setting[_]] = {
+    Seq(
+      sourceDependencies in typescript := Nil,
+      typescript in Assets := SbtJsTask.jsSourceFileTask(typescript, Assets).dependsOn(nodeModules in Plugin).value,
+      typescript in TestAssets := SbtJsTask.jsSourceFileTask(typescript, TestAssets).dependsOn(nodeModules in Plugin).value,
+      resourceManaged in typescript in Assets := webTarget.value / typescript.key.label / "main",
+      resourceManaged in typescript in TestAssets := webTarget.value / typescript.key.label / "test",
+      typescript := (typescript in Assets).value
+    ) ++
+      inConfig(Assets)(addUnscopedJsSourceFileTasks()) ++
+      inConfig(TestAssets)(addUnscopedJsSourceFileTasks())
+  }
+
+  /** adapted from SbtJsTask.addUnscopedJsSourceFileTasks */
+  private def addUnscopedJsSourceFileTasks(): Seq[Setting[_]] = {
+    Seq(
+      resourceGenerators <+= typescriptWrapperTask,
+      managedResourceDirectories += (resourceManaged in typescript).value
+    ) ++ inTask(typescript)(Seq(
+      managedSourceDirectories ++= Def.settingDyn { sourceDependencies.value.map(resourceManaged in _).join }.value,
+      managedSources ++= Def.taskDyn { sourceDependencies.value.join.map(_.flatten) }.value,
+      sourceDirectories := unmanagedSourceDirectories.value ++ managedSourceDirectories.value,
+      sources := unmanagedSources.value ++ managedSources.value
+    ))
+  }
+
+  def moveFiles() = Def.task {
+    val compiledFiles = typescript.value
+    //streams.value.log.info("received files"+compiledFiles)
+    val relAssetsPath = (sourceDirectory in Assets).value.relativeTo(baseDirectory.value)
+
+    val targetPath = (resourceManaged in typescript in Assets).value
+      // input is target/web/typescript/main/src/main/assets/x/y output is target/web/typescript/main/x/y
+      val copyMappings:Seq[(File,File)] = compiledFiles.map(f => {
+        val relativeToPath =targetPath / relAssetsPath.get.getPath
+        val relFilePath = f relativeTo relativeToPath
+
+        streams.value.log.debug(s"file $f relative to $relativeToPath is $relFilePath")
+        val targetFile = targetPath / relFilePath.get.getPath
+        (f, targetFile)
+      })
+      IO.copy(copyMappings).toSeq
+  }
 
   def parseTsConfig() = Def.task {
     val tsConfigFile = projectFile.value

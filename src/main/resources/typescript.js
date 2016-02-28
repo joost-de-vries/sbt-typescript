@@ -1,7 +1,11 @@
 "use strict";
+var fs = require("fs");
+var ts = require("typescript");
+var path = require("path");
 var Logger = (function () {
     function Logger(logLevel) {
         this.logLevel = logLevel;
+        this.isDebug = 'debug' === this.logLevel;
     }
     Logger.prototype.debug = function (message, object) {
         if (this.logLevel === 'debug' && object)
@@ -36,47 +40,127 @@ var Logger = (function () {
     };
     return Logger;
 }());
-var fs = require('fs');
-var typescript = require("typescript");
-var path = require("path");
-var mkdirp = require("mkdirp");
 var args = parseArgs(process.argv);
 var sbtTypescriptOpts = args.options;
 var logger = new Logger(sbtTypescriptOpts.logLevel);
-logger.debug("starting compile of ", args.sourceFileMappings.map(function (a) { return a[1]; }));
+var logModuleResolution = false;
+var Some = (function () {
+    function Some(value) {
+        this.value = value;
+    }
+    Some.prototype.foreach = function (f) {
+        return f(this.value);
+    };
+    Some.prototype.map = function (f) {
+        return new Some(f(this.value));
+    };
+    return Some;
+}());
+var None = (function () {
+    function None() {
+    }
+    None.prototype.foreach = function (f) {
+    };
+    None.prototype.map = function (f) {
+        return new None();
+    };
+    return None;
+}());
+var SourceMapping = (function () {
+    function SourceMapping(a) {
+        this.absolutePath = a[0];
+        this.relativePath = a[1];
+    }
+    SourceMapping.prototype.normalizedAbsolutePath = function () {
+        return path.normalize(this.absolutePath);
+    };
+    SourceMapping.prototype.toOutputPath = function (targetDir, extension) {
+        return path.join(targetDir, replaceFileExtension(path.normalize(this.relativePath), extension));
+    };
+    return SourceMapping;
+}());
+var SourceMappings = (function () {
+    function SourceMappings(sourceFileMappings) {
+        this.mappings = sourceFileMappings.map(function (a) { return new SourceMapping(a); });
+    }
+    SourceMappings.prototype.asAbsolutePaths = function () {
+        if (!this.absolutePaths) {
+            this.absolutePaths = this.mappings.map(function (sm) { return sm.normalizedAbsolutePath(); });
+        }
+        return this.absolutePaths;
+    };
+    SourceMappings.prototype.find = function (sf) {
+        var absPath = path.normalize(sf.fileName);
+        var index = this.asAbsolutePaths().indexOf(absPath);
+        if (index != -1) {
+            return new Some(this.mappings[index]);
+        }
+        else {
+            return new None();
+        }
+    };
+    return SourceMappings;
+}());
+var sourceMappings = new SourceMappings(args.sourceFileMappings);
+logger.debug("starting compilation of ", sourceMappings.mappings.map(function (sm) { return sm.relativePath; }));
 logger.debug("from ", sbtTypescriptOpts.assetsDir);
+logger.debug("to ", args.target);
 logger.debug("args ", args);
-var compileResult = compile(args.sourceFileMappings, sbtTypescriptOpts, args.target);
+var compileResult = compile(sourceMappings, sbtTypescriptOpts, args.target);
 compileDone(compileResult);
 function compile(sourceMaps, options, target) {
     var problems = [];
-    var _a = toInputOutputFiles(sourceMaps), inputFiles = _a[0], outputFiles = _a[1];
+    var targetDir = determineTargetAssetsDir(options);
     var unparsedCompilerOptions = options.tsconfig["compilerOptions"];
-    logger.debug("compilerOptions ", unparsedCompilerOptions);
-    var tsConfig = typescript.convertCompilerOptionsFromJson(unparsedCompilerOptions, options.tsconfigDir, "tsconfig.json");
+    if (unparsedCompilerOptions.outFile) {
+        var outFile = path.join(targetDir, path.basename(unparsedCompilerOptions.outFile));
+        logger.debug("single outFile ", outFile);
+        unparsedCompilerOptions.outFile = outFile;
+    }
+    unparsedCompilerOptions.rootDir = options.tsconfigDir;
+    var tsConfig = ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, options.tsconfigDir, "tsconfig.json");
     var results = [];
     if (tsConfig.errors.length > 0) {
         logger.debug("errors during parsing of compilerOptions", tsConfig.errors);
         problems.push.apply(problems, toProblems(tsConfig.errors, options.tsCodesToIgnore));
     }
     else {
-        tsConfig.options.rootDir = sbtTypescriptOpts.assetsDir;
         tsConfig.options.outDir = target;
         var resolutionDirs = [];
         if (sbtTypescriptOpts.resolveFromNodeModulesDir)
             resolutionDirs.push(sbtTypescriptOpts.nodeModulesDir);
+        logger.debug("using tsc options ", tsConfig.options);
         var compilerHost = createCompilerHost(tsConfig.options, resolutionDirs);
-        var filesToCompile = inputFiles;
+        var filesToCompile = sourceMaps.asAbsolutePaths();
         if (sbtTypescriptOpts.extraFiles)
-            filesToCompile = inputFiles.concat(sbtTypescriptOpts.extraFiles);
-        var program = typescript.createProgram(filesToCompile, tsConfig.options, compilerHost);
+            filesToCompile = filesToCompile.concat(sbtTypescriptOpts.extraFiles);
+        var program = ts.createProgram(filesToCompile, tsConfig.options, compilerHost);
         logger.debug("created program");
-        problems.push.apply(problems, findGlobalProblems(program, options.tsCodesToIgnore));
+        problems.push.apply(problems, findPreemitProblems(program, options.tsCodesToIgnore));
         var emitOutput = program.emit();
         problems.push.apply(problems, toProblems(emitOutput.diagnostics, options.tsCodesToIgnore));
-        var sourceFiles = program.getSourceFiles();
-        logger.debug("program sourcefiles ", sourceFiles.length);
-        results = flatten(sourceFiles.map(toCompilationResult(inputFiles, outputFiles, tsConfig.options, logger)));
+        if (logger.isDebug) {
+            var declarationFiles = program.getSourceFiles().filter(isDeclarationFile);
+            logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.");
+        }
+        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, tsConfig.options, targetDir)));
+    }
+    logger.debug("files written", results.map(function (r) { return r.result.filesWritten; }));
+    var output = {
+        results: results,
+        problems: problems
+    };
+    return output;
+    function determineTargetAssetsDir(options) {
+        var assetsRelDir = options.assetsDir.substring(options.tsconfigDir.length, options.assetsDir.length);
+        return path.join(target, assetsRelDir);
+    }
+    function isCodeFile(f) {
+        return !(isDeclarationFile(f));
+    }
+    function isDeclarationFile(f) {
+        var fileName = f.fileName;
+        return ".d.ts" === fileName.substring(fileName.length - 5);
     }
     function flatten(xs) {
         var result = [];
@@ -86,30 +170,38 @@ function compile(sourceMaps, options, target) {
         });
         return result;
     }
-    var output = {
-        results: results,
-        problems: problems
+}
+function toCompilationResult(sourceMappings, compilerOptions, targetDir) {
+    return function (sourceFile) {
+        return sourceMappings.find(sourceFile).map(function (sm) {
+            var deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(function (f) { return f.fileName; }));
+            var outputFile = determineOutFile(sm.toOutputPath(targetDir, ".js"), compilerOptions, targetDir);
+            var filesWritten = [outputFile];
+            if (compilerOptions.declaration) {
+                var outputFileDeclaration = sm.toOutputPath(targetDir, ".d.ts");
+                filesWritten.push(outputFileDeclaration);
+            }
+            if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
+                var outputFileMap = outputFile + ".map";
+                fixSourceMapFile(outputFileMap);
+                filesWritten.push(outputFileMap);
+            }
+            var result = {
+                source: sourceFile.fileName,
+                result: {
+                    filesRead: deps,
+                    filesWritten: filesWritten
+                }
+            };
+            return result;
+        });
     };
-    return output;
 }
 function compileDone(compileResult) {
     console.log("\u0010" + JSON.stringify(compileResult));
 }
-function toInputOutputFiles(sourceMaps) {
-    var inputFiles = [];
-    var outputFiles = [];
-    sourceMaps.forEach(function (sourceMap) {
-        var absolutFilePath = sourceMap[0];
-        var relativeFilePath = sourceMap[1];
-        inputFiles.push(path.normalize(absolutFilePath));
-        outputFiles.push(path.join(args.target, replaceFileExtension(path.normalize(relativeFilePath), ".js")));
-    });
-    return [inputFiles, outputFiles];
-}
-function findGlobalProblems(program, tsIgnoreList) {
-    var diagnostics = program.getSyntacticDiagnostics()
-        .concat(program.getGlobalDiagnostics())
-        .concat(program.getSemanticDiagnostics());
+function findPreemitProblems(program, tsIgnoreList) {
+    var diagnostics = ts.getPreEmitDiagnostics(program);
     if (tsIgnoreList)
         return diagnostics.filter(ignoreDiagnostic(tsIgnoreList)).map(parseDiagnostic);
     else
@@ -138,7 +230,7 @@ function parseDiagnostic(d) {
     var problem = {
         lineNumber: lineCol.line,
         characterOffset: lineCol.character,
-        message: d.code + " " + typescript.flattenDiagnosticMessageText(d.messageText, typescript.sys.newLine),
+        message: "TS" + d.code + " " + ts.flattenDiagnosticMessageText(d.messageText, ts.sys.newLine),
         source: fileName,
         severity: toSeverity(d.category),
         lineContent: lineText
@@ -159,41 +251,9 @@ function toSeverity(i) {
         return "error";
     }
 }
-function toCompilationResult(inputFiles, outputFiles, compilerOptions, logger) {
-    return function (sourceFile) {
-        var index = inputFiles.indexOf(path.normalize(sourceFile.fileName));
-        if (index === -1) {
-            return {};
-        }
-        var deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(function (f) { return f.fileName; }));
-        var outputFile = determineOutFile(outputFiles[index], compilerOptions, logger);
-        var filesWritten = [outputFile];
-        if (compilerOptions.declaration) {
-            var outputFileDeclaration = replaceFileExtension(outputFile, ".d.ts");
-            filesWritten.push(outputFileDeclaration);
-        }
-        if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
-            var outputFileMap = outputFile + ".map";
-            fixSourceMapFile(outputFileMap);
-            filesWritten.push(outputFileMap);
-        }
-        logger.debug("files written ", filesWritten);
-        var result = {
-            source: sourceFile.fileName,
-            result: {
-                filesRead: deps,
-                filesWritten: filesWritten
-            }
-        };
-        return {
-            value: result
-        };
-    };
-}
-exports.toCompilationResult = toCompilationResult;
-function determineOutFile(outFile, options, logger) {
+function determineOutFile(outFile, options, targetDir) {
     if (options.outFile) {
-        logger.debug("single outFile");
+        logger.debug("single outFile ", options.outFile);
         return options.outFile;
     }
     else {
@@ -235,38 +295,32 @@ function parseArgs(args) {
         options: options
     };
 }
-exports.parseArgs = parseArgs;
 function replaceFileExtension(file, ext) {
-    var path = require("path");
     var oldExt = path.extname(file);
     return file.substring(0, file.length - oldExt.length) + ext;
 }
 function createCompilerHost(options, moduleSearchLocations) {
-    var cHost = typescript.createCompilerHost(options);
+    var cHost = ts.createCompilerHost(options);
     cHost.resolveModuleNames = resolveModuleNames;
     return cHost;
     function resolveModuleNames(moduleNames, containingFile) {
         return moduleNames.map(function (moduleName) {
-            var result = typescript.resolveModuleName(moduleName, containingFile, options, cHost);
+            var result = ts.resolveModuleName(moduleName, containingFile, options, cHost);
             if (result.resolvedModule) {
                 return result.resolvedModule;
-            }
-            else {
             }
             for (var _i = 0, moduleSearchLocations_1 = moduleSearchLocations; _i < moduleSearchLocations_1.length; _i++) {
                 var location_1 = moduleSearchLocations_1[_i];
                 var modulePath = path.join(location_1, moduleName + ".d.ts");
                 if (cHost.fileExists(modulePath)) {
                     var resolvedModule = { resolvedFileName: modulePath };
-                    if (logger.logLevel === "debug")
+                    if (logger.logLevel === "debug" && logModuleResolution)
                         logger.debug("found in extra location ", resolvedModule);
                     return resolvedModule;
                 }
-                else {
-                    if (logger.logLevel === "warn")
-                        logger.warn("gave up");
-                }
             }
+            if (logger.logLevel === "warn")
+                logger.warn("could not find " + moduleName);
             return undefined;
         });
     }

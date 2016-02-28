@@ -1,3 +1,4 @@
 # check handling of outFile setting
 > assets
 $ exists target/web/public/main/outfile.js
+-$ exists target/web/public/main/javascripts/greeter.js

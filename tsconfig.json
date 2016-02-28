@@ -1,10 +1,12 @@
 {
   "compilerOptions": {
-    "module":"commonjs",
+    "module": "commonjs",
     "noImplicitAny": true,
     "removeComments": true,
     "preserveConstEnums": true,
     "sourceMap": false,
+    "noImplicitReturns": true,
+    "noEmitOnError": true,
     "outDir": "./src/main/resources"
   },
   "exclude": [
@@ -12,6 +14,7 @@
     "typings/browser",
     "typings/main",
     "typings/browser.d.ts",
+    "typings/main.d.ts",
     "example",
     "src/sbt-test"
   ]

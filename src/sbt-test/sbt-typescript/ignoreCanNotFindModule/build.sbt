@@ -16,3 +16,5 @@ libraryDependencies ++= Seq(
 )
 
 tsCodesToIgnore := List(canNotFindModule)
+
+logLevel in typescript := Level.Debug
