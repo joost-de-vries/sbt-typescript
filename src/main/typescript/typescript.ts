@@ -289,7 +289,7 @@ function ignoreDiagnostic(tsIgnoreList:number[]):(d:Diagnostic)=> boolean {
 
 function parseDiagnostic(d:Diagnostic):Problem {
     let lineCol = {line: 0, character: 0};
-    let fileName = "Global";
+    let fileName = "tsconfig.json";
     let lineText = "";
     if (d.file) {
         lineCol = d.file.getLineAndCharacterOfPosition(d.start);
