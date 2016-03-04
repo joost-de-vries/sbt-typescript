@@ -53,7 +53,8 @@ The following `tsc` compiler options are managed by `sbt-typescript` so setting 
  - `rootDir`.  
 
 ##status
-The plugin is young. Currently it is mostly tested against `EngineType.Node`.  
+The plugin is young. Currently it is mostly tested against `EngineType.Node` and Angular2 applications with npm style dependencies.  
+The release 0.2.2 uses Typescript 1.8.2. If you want to try out Typescript 1.8.7 with your application you can use 0.2.3-SNAPSHOT.
 There are some other features I'm planning to implement.
 
 ##history

@@ -149,8 +149,4 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     }
     }
   }
-  def scalaJSProdTask: Def.Initialize[Task[Pipeline.Stage]] = Def.task { mappings: Seq[PathMapping] =>
-    includeFilter
-    mappings ++ prodFiles(Compile).value ++ sourcemapScalaFiles(fullOptJS).value
-  }
 }
