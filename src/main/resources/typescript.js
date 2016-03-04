@@ -110,31 +110,24 @@ var compileResult = compile(sourceMappings, sbtTypescriptOpts, args.target);
 compileDone(compileResult);
 function compile(sourceMaps, options, target) {
     var problems = [];
-    var targetDir = determineTargetAssetsDir(options);
-    var unparsedCompilerOptions = options.tsconfig["compilerOptions"];
-    if (unparsedCompilerOptions.outFile) {
-        var outFile = path.join(targetDir, path.basename(unparsedCompilerOptions.outFile));
-        logger.debug("single outFile ", outFile);
-        unparsedCompilerOptions.outFile = outFile;
-    }
-    unparsedCompilerOptions.rootDir = options.tsconfigDir;
-    var tsConfig = ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, options.tsconfigDir, "tsconfig.json");
     var results = [];
-    if (tsConfig.errors.length > 0) {
-        logger.debug("errors during parsing of compilerOptions", tsConfig.errors);
-        problems.push.apply(problems, toProblems(tsConfig.errors, options.tsCodesToIgnore));
+    var targetDir = determineTargetAssetsDir(options);
+    var _a = toCompilerOptions(options), compilerOptions = _a.options, errors = _a.errors;
+    if (errors.length > 0) {
+        logger.debug("errors during parsing of compilerOptions", errors);
+        problems.push.apply(problems, toProblems(errors, options.tsCodesToIgnore));
     }
     else {
-        tsConfig.options.outDir = target;
+        compilerOptions.outDir = target;
         var resolutionDirs = [];
         if (sbtTypescriptOpts.resolveFromNodeModulesDir)
             resolutionDirs.push(sbtTypescriptOpts.nodeModulesDir);
-        logger.debug("using tsc options ", tsConfig.options);
-        var compilerHost = createCompilerHost(tsConfig.options, resolutionDirs);
+        logger.debug("using tsc options ", compilerOptions);
+        var compilerHost = createCompilerHost(compilerOptions, resolutionDirs);
         var filesToCompile = sourceMaps.asAbsolutePaths();
         if (sbtTypescriptOpts.extraFiles)
             filesToCompile = filesToCompile.concat(sbtTypescriptOpts.extraFiles);
-        var program = ts.createProgram(filesToCompile, tsConfig.options, compilerHost);
+        var program = ts.createProgram(filesToCompile, compilerOptions, compilerHost);
         logger.debug("created program");
         problems.push.apply(problems, findPreemitProblems(program, options.tsCodesToIgnore));
         var emitOutput = program.emit();
@@ -143,7 +136,7 @@ function compile(sourceMaps, options, target) {
             var declarationFiles = program.getSourceFiles().filter(isDeclarationFile);
             logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.");
         }
-        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, tsConfig.options, targetDir)));
+        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions, targetDir)));
     }
     logger.debug("files written", results.map(function (r) { return r.result.filesWritten; }));
     var output = {
@@ -151,6 +144,16 @@ function compile(sourceMaps, options, target) {
         problems: problems
     };
     return output;
+    function toCompilerOptions(sbtOptions) {
+        var unparsedCompilerOptions = sbtOptions.tsconfig["compilerOptions"];
+        if (unparsedCompilerOptions.outFile) {
+            var outFile = path.join(targetDir, path.basename(unparsedCompilerOptions.outFile));
+            logger.debug("single outFile ", outFile);
+            unparsedCompilerOptions.outFile = outFile;
+        }
+        unparsedCompilerOptions.rootDir = sbtOptions.tsconfigDir;
+        return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json");
+    }
     function determineTargetAssetsDir(options) {
         var assetsRelDir = options.assetsDir.substring(options.tsconfigDir.length, options.assetsDir.length);
         return path.join(target, assetsRelDir);
@@ -194,6 +197,20 @@ function toCompilationResult(sourceMappings, compilerOptions, targetDir) {
                 }
             };
             return result;
+            function determineOutFile(outFile, options, targetDir) {
+                if (options.outFile) {
+                    logger.debug("single outFile ", options.outFile);
+                    return options.outFile;
+                }
+                else {
+                    return outFile;
+                }
+            }
+            function fixSourceMapFile(file) {
+                var sourceMap = JSON.parse(fs.readFileSync(file, 'utf-8'));
+                sourceMap.sources = sourceMap.sources.map(function (source) { return path.basename(source); });
+                fs.writeFileSync(file, JSON.stringify(sourceMap), 'utf-8');
+            }
         });
     };
 }
@@ -218,7 +235,7 @@ function ignoreDiagnostic(tsIgnoreList) {
 }
 function parseDiagnostic(d) {
     var lineCol = { line: 0, character: 0 };
-    var fileName = "Global";
+    var fileName = "tsconfig.json";
     var lineText = "";
     if (d.file) {
         lineCol = d.file.getLineAndCharacterOfPosition(d.start);
@@ -236,34 +253,20 @@ function parseDiagnostic(d) {
         lineContent: lineText
     };
     return problem;
-}
-function toSeverity(i) {
-    if (i === 0) {
-        return "warn";
+    function toSeverity(i) {
+        if (i === 0) {
+            return "warn";
+        }
+        else if (i === 1) {
+            return "error";
+        }
+        else if (i === 2) {
+            return "info";
+        }
+        else {
+            return "error";
+        }
     }
-    else if (i === 1) {
-        return "error";
-    }
-    else if (i === 2) {
-        return "info";
-    }
-    else {
-        return "error";
-    }
-}
-function determineOutFile(outFile, options, targetDir) {
-    if (options.outFile) {
-        logger.debug("single outFile ", options.outFile);
-        return options.outFile;
-    }
-    else {
-        return outFile;
-    }
-}
-function fixSourceMapFile(file) {
-    var sourceMap = JSON.parse(fs.readFileSync(file, 'utf-8'));
-    sourceMap.sources = sourceMap.sources.map(function (source) { return path.basename(source); });
-    fs.writeFileSync(file, JSON.stringify(sourceMap), 'utf-8');
 }
 function parseArgs(args) {
     var SOURCE_FILE_MAPPINGS_ARG = 2;

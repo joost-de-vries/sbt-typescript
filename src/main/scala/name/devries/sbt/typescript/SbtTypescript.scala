@@ -4,6 +4,9 @@ import java.io.File
 
 import com.typesafe.sbt.jse.JsEngineImport.JsEngineKeys
 import com.typesafe.sbt.jse.SbtJsTask
+import com.typesafe.sbt.web.PathMapping
+import com.typesafe.sbt.web.pipeline.Pipeline
+import sbt.Project.Initialize
 import sbt._
 import sbt.Keys._
 import spray.json._
@@ -32,6 +35,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     val canNotFindModule = 2307 //see f.i. https://github.com/Microsoft/TypeScript/issues/3808
 
     val resolveFromWebjarsNodeModulesDir = SettingKey[Boolean]("typescript-resolve-modules-from-etc","Will use the directory to resolve modules ")
+    val typescriptStage = Def.taskKey[Pipeline.Stage]("Create outfile in stage")
   }
 
   val getTsConfig = TaskKey[JsObject]("get-tsconfig", "parses the tsconfig.json file")
@@ -144,5 +148,9 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       case Some(jsValue) => Map(s -> jsValue)
     }
     }
+  }
+  def scalaJSProdTask: Def.Initialize[Task[Pipeline.Stage]] = Def.task { mappings: Seq[PathMapping] =>
+    includeFilter
+    mappings ++ prodFiles(Compile).value ++ sourcemapScalaFiles(fullOptJS).value
   }
 }

@@ -1,7 +1,17 @@
 /* global process, require */
 /// <reference path="../../../typings/main.d.ts" />
 // inspired by https://github.com/ArpNetworking/sbt-typescript/blob/master/src/main/resources/typescriptc.js
-import {Program,Diagnostic,SourceFile,CompilerOptions,DiagnosticMessageChain,DiagnosticCategory,CompilerHost,ResolvedModule,ScriptTarget} from "typescript"
+import {
+    Program,
+    Diagnostic,
+    SourceFile,
+    CompilerOptions,
+    DiagnosticMessageChain,
+    DiagnosticCategory,
+    CompilerHost,
+    ResolvedModule,
+    ScriptTarget
+} from "typescript"
 
 const fs = require("fs")
 const ts = require("typescript");
@@ -67,7 +77,7 @@ class Some<T> {
         return f(this.value)
     }
 
-    map<B> (f:(t:T)=>B):Option<B> {
+    map<B>(f:(t:T)=>B):Option<B> {
         return new Some(f(this.value))
     }
 }
@@ -75,7 +85,7 @@ class None<T> implements Option<T> {
     foreach(f:(t:T)=>any) {
     }
 
-    map<B> (f:(t:T)=>B):Option<B> {
+    map<B>(f:(t:T)=>B):Option<B> {
         return new None<B>()
     }
 }
@@ -116,7 +126,6 @@ class SourceMappings {
         return this.absolutePaths
     }
 
-
     find(sf:SourceFile):Option<SourceMapping> {
         const absPath = path.normalize(sf.fileName)
         const index = this.asAbsolutePaths().indexOf(absPath)
@@ -142,34 +151,27 @@ compileDone(compileResult)
 
 function compile(sourceMaps:SourceMappings, options:SbtTypescriptOptions, target:string):CompilationResult {
     const problems:Problem[] = []
+    let results:CompilationFileResult[] = []
+
     const targetDir = determineTargetAssetsDir(options)
 
-    const unparsedCompilerOptions:any = options.tsconfig["compilerOptions"]
-    //logger.debug("compilerOptions ", unparsedCompilerOptions)
-        if (unparsedCompilerOptions.outFile) {
-        const outFile = path.join(targetDir,path.basename(unparsedCompilerOptions.outFile))
-        logger.debug("single outFile ",outFile)
-        unparsedCompilerOptions.outFile= outFile
-        }
-        unparsedCompilerOptions.rootDir = options.tsconfigDir
-    const tsConfig = ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, options.tsconfigDir, "tsconfig.json");
-    let results:CompilationFileResult[] = []
-    if (tsConfig.errors.length > 0) {
-        logger.debug("errors during parsing of compilerOptions", tsConfig.errors)
-        problems.push(...toProblems(tsConfig.errors, options.tsCodesToIgnore))
+    const { options: compilerOptions, errors } = toCompilerOptions(options)
+    if (errors.length > 0) {
+        logger.debug("errors during parsing of compilerOptions", errors)
+        problems.push(...toProblems(errors, options.tsCodesToIgnore))
     }
     else {
-        tsConfig.options.outDir = target;
+        compilerOptions.outDir = target;
 
         let resolutionDirs:string[] = []
         if (sbtTypescriptOpts.resolveFromNodeModulesDir) resolutionDirs.push(sbtTypescriptOpts.nodeModulesDir)
-        logger.debug("using tsc options ", tsConfig.options);
-        const compilerHost = createCompilerHost(tsConfig.options, resolutionDirs);
+        logger.debug("using tsc options ", compilerOptions);
+        const compilerHost = createCompilerHost(compilerOptions, resolutionDirs);
 
         let filesToCompile = sourceMaps.asAbsolutePaths()
         if (sbtTypescriptOpts.extraFiles) filesToCompile = filesToCompile.concat(sbtTypescriptOpts.extraFiles)
 
-        const program:Program = ts.createProgram(filesToCompile, tsConfig.options, compilerHost);
+        const program:Program = ts.createProgram(filesToCompile, compilerOptions, compilerHost);
         logger.debug("created program")
         problems.push(...findPreemitProblems(program, options.tsCodesToIgnore))
 
@@ -182,7 +184,7 @@ function compile(sourceMaps:SourceMappings, options:SbtTypescriptOptions, target
             logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.")
         }
 
-        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, tsConfig.options, targetDir)));
+        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions, targetDir)));
     }
 
     logger.debug("files written", results.map((r)=> r.result.filesWritten))
@@ -192,6 +194,19 @@ function compile(sourceMaps:SourceMappings, options:SbtTypescriptOptions, target
         problems: problems
     };
     return output;
+
+    function toCompilerOptions(sbtOptions:SbtTypescriptOptions):{ options: CompilerOptions, errors: Diagnostic[] }{
+        const unparsedCompilerOptions:any = sbtOptions.tsconfig["compilerOptions"]
+        //logger.debug("compilerOptions ", unparsedCompilerOptions)
+        if (unparsedCompilerOptions.outFile) {
+            const outFile = path.join(targetDir, path.basename(unparsedCompilerOptions.outFile))
+            logger.debug("single outFile ", outFile)
+            unparsedCompilerOptions.outFile = outFile
+        }
+        unparsedCompilerOptions.rootDir = sbtOptions.tsconfigDir
+        return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json");
+
+    }
 
     function determineTargetAssetsDir(options:SbtTypescriptOptions) {
         const assetsRelDir = options.assetsDir.substring(options.tsconfigDir.length, options.assetsDir.length)
@@ -245,6 +260,21 @@ function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:Comp
                 }
             };
             return result
+
+            function determineOutFile(outFile:string, options:CompilerOptions, targetDir:string):string {
+                if (options.outFile) {
+                    logger.debug("single outFile ", options.outFile)
+                    return options.outFile
+                } else {
+                    return outFile
+                }
+            }
+
+            function fixSourceMapFile(file:string) {
+                let sourceMap = JSON.parse(fs.readFileSync(file, 'utf-8'));
+                sourceMap.sources = sourceMap.sources.map((source:string)=> path.basename(source));
+                fs.writeFileSync(file, JSON.stringify(sourceMap), 'utf-8');
+            }
         })
     }
 }
@@ -309,33 +339,18 @@ function parseDiagnostic(d:Diagnostic):Problem {
         lineContent: lineText
     };
     return problem;
-}
 
-function toSeverity(i:DiagnosticCategory):string {
-    if (i === 0) {
-        return "warn";
-    } else if (i === 1) {
-        return "error";
-    } else if (i === 2) {
-        return "info";
-    } else {
-        return "error"
+    function toSeverity(i:DiagnosticCategory):string {
+        if (i === 0) {
+            return "warn";
+        } else if (i === 1) {
+            return "error";
+        } else if (i === 2) {
+            return "info";
+        } else {
+            return "error"
+        }
     }
-}
-
-function determineOutFile(outFile:string, options:CompilerOptions, targetDir:string):string {
-    if (options.outFile) {
-        logger.debug("single outFile ",options.outFile)
-        return options.outFile
-    } else {
-        return outFile
-    }
-}
-
-function fixSourceMapFile(file:string) {
-    let sourceMap = JSON.parse(fs.readFileSync(file, 'utf-8'));
-    sourceMap.sources = sourceMap.sources.map((source:string)=> path.basename(source));
-    fs.writeFileSync(file, JSON.stringify(sourceMap), 'utf-8');
 }
 
 interface CompilationFileResult {
@@ -345,7 +360,6 @@ interface CompilationFileResult {
         filesWritten: string[]
     }
 }
-
 
 /** interfacing with sbt */
 //from jstranspiler
@@ -433,7 +447,7 @@ function createCompilerHost(options:CompilerOptions, moduleSearchLocations:strin
                 }
             }
 
-            if (logger.logLevel === "warn") logger.warn("could not find "+moduleName)
+            if (logger.logLevel === "warn") logger.warn("could not find " + moduleName)
 
             return undefined;
         });
