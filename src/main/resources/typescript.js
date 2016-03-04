@@ -108,14 +108,13 @@ logger.debug("to ", args.target);
 logger.debug("args ", args);
 var compileResult = compile(sourceMappings, sbtTypescriptOpts, args.target);
 compileDone(compileResult);
-function compile(sourceMaps, options, target) {
+function compile(sourceMaps, sbtOptions, target) {
     var problems = [];
     var results = [];
-    var targetDir = determineTargetAssetsDir(options);
-    var _a = toCompilerOptions(options), compilerOptions = _a.options, errors = _a.errors;
+    var targetDir = determineTargetAssetsDir(sbtOptions);
+    var _a = toCompilerOptions(sbtOptions), compilerOptions = _a.options, errors = _a.errors;
     if (errors.length > 0) {
-        logger.debug("errors during parsing of compilerOptions", errors);
-        problems.push.apply(problems, toProblems(errors, options.tsCodesToIgnore));
+        problems.push.apply(problems, toProblems(errors, sbtOptions.tsCodesToIgnore));
     }
     else {
         compilerOptions.outDir = target;
@@ -129,9 +128,9 @@ function compile(sourceMaps, options, target) {
             filesToCompile = filesToCompile.concat(sbtTypescriptOpts.extraFiles);
         var program = ts.createProgram(filesToCompile, compilerOptions, compilerHost);
         logger.debug("created program");
-        problems.push.apply(problems, findPreemitProblems(program, options.tsCodesToIgnore));
+        problems.push.apply(problems, findPreemitProblems(program, sbtOptions.tsCodesToIgnore));
         var emitOutput = program.emit();
-        problems.push.apply(problems, toProblems(emitOutput.diagnostics, options.tsCodesToIgnore));
+        problems.push.apply(problems, toProblems(emitOutput.diagnostics, sbtOptions.tsCodesToIgnore));
         if (logger.isDebug) {
             var declarationFiles = program.getSourceFiles().filter(isDeclarationFile);
             logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.");

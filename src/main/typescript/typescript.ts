@@ -149,16 +149,16 @@ logger.debug("args ", args)
 const compileResult = compile(sourceMappings, sbtTypescriptOpts, args.target)
 compileDone(compileResult)
 
-function compile(sourceMaps:SourceMappings, options:SbtTypescriptOptions, target:string):CompilationResult {
+function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, target:string):CompilationResult {
     const problems:Problem[] = []
     let results:CompilationFileResult[] = []
 
-    const targetDir = determineTargetAssetsDir(options)
+    const targetDir = determineTargetAssetsDir(sbtOptions)
 
-    const { options: compilerOptions, errors } = toCompilerOptions(options)
+    const { options: compilerOptions, errors } = toCompilerOptions(sbtOptions)
+    
     if (errors.length > 0) {
-        logger.debug("errors during parsing of compilerOptions", errors)
-        problems.push(...toProblems(errors, options.tsCodesToIgnore))
+        problems.push(...toProblems(errors, sbtOptions.tsCodesToIgnore))
     }
     else {
         compilerOptions.outDir = target;
@@ -173,11 +173,11 @@ function compile(sourceMaps:SourceMappings, options:SbtTypescriptOptions, target
 
         const program:Program = ts.createProgram(filesToCompile, compilerOptions, compilerHost);
         logger.debug("created program")
-        problems.push(...findPreemitProblems(program, options.tsCodesToIgnore))
+        problems.push(...findPreemitProblems(program, sbtOptions.tsCodesToIgnore))
 
         const emitOutput = program.emit();
 
-        problems.push(...toProblems(emitOutput.diagnostics, options.tsCodesToIgnore));
+        problems.push(...toProblems(emitOutput.diagnostics, sbtOptions.tsCodesToIgnore));
 
         if (logger.isDebug) {
             const declarationFiles = program.getSourceFiles().filter(isDeclarationFile)
@@ -278,7 +278,6 @@ function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:Comp
         })
     }
 }
-
 
 interface CompilationResult {
     results: CompilationFileResult[]
@@ -396,7 +395,6 @@ function parseArgs(args:string[]):Args {
         target: target,
         options: options
     };
-
 }
 
 interface Args {
@@ -420,7 +418,6 @@ function replaceFileExtension(file:string, ext:string) {
     let oldExt = path.extname(file);
     return file.substring(0, file.length - oldExt.length) + ext;
 }
-
 
 function createCompilerHost(options:CompilerOptions, moduleSearchLocations:string[]):CompilerHost {
     const cHost = ts.createCompilerHost(options)
