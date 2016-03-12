@@ -1,7 +1,6 @@
 /* global process, require */
 /// <reference path="./internal.ts" />
 /// <reference path="../../../typings/main.d.ts" />
-// inspired by https://github.com/ArpNetworking/sbt-typescript/blob/master/src/main/resources/typescriptc.js
 import {
     Program,
     Diagnostic,
@@ -23,8 +22,6 @@ const sbtTypescriptOpts:SbtTypescriptOptions = args.options
 const logger = new Logger(sbtTypescriptOpts.logLevel);
 const logModuleResolution = false
 
-
-
 const sourceMappings = new SourceMappings(args.sourceFileMappings)
 
 logger.debug("starting compilation of ", sourceMappings.mappings.map((sm)=> sm.relativePath));
@@ -33,6 +30,7 @@ logger.debug("to ", args.target)
 logger.debug("args ", args)
 
 const compileResult = compile(sourceMappings, sbtTypescriptOpts, args.target)
+
 compileDone(compileResult)
 
 function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, target:string):CompilationResult {
