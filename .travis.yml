@@ -8,6 +8,6 @@ scala:
 node_js:
   - "5.6"
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION scripted
+  - sbt scripted
 jdk:
   - oraclejdk7
