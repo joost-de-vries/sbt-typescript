@@ -8,7 +8,9 @@ cache:
 node_js: "5.6"
 jdk: oraclejdk7
 script:
-  - sbt scripted
+  - sbt scripted sbt-typescript/ignoreCanNotFindModule
+  - sbt scripted sbt-typescript/inlinesourcemap
+  - sbt scripted sbt-typescript/sourcemap
 
   # Tricks to avoid unnecessary cache updates
   - find $HOME/.sbt -name "*.lock" | xargs rm
