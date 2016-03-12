@@ -1,14 +1,13 @@
 dist: trusty
 sudo: required
-language: scala
 cache:
   directories:
   - $HOME/.ivy2
 scala:
-  - 2.10.4
+  - 2.10.6
 node_js:
   - "5.6"
 script:
   - sbt ++$TRAVIS_SCALA_VERSION scripted
 jdk:
-  - openjdk7
+  - oraclejdk7
