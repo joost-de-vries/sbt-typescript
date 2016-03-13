@@ -63,7 +63,11 @@ Kudos to Brendan Arp for his [javascript tsc driver](https://github.com/ArpNetwo
 
 ###release notes
 
-#### v2.2.0 
+#### v0.2.3
+- upgrades to typescript 1.8.2
+- adds support for tests in typescript
+
+#### v0.2.2 
 - upgrades to typescript 1.8.2
 - improves output of single outfile
 - fixes a nasty bug in module resolution. This is essential for angular2 applications.
