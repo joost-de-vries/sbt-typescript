@@ -12,7 +12,7 @@ As such it
  - [x] allows resolution of module imports against webjars. Since every Angular2 application uses ES6 module imports this is obviously an important requirement.
  - [x] allows for including typings files in the build. This is essential for compilation to ES5 because the standard ES5 lib doesn't have some types that f.i. Angular2 needs. These types are offered for ES5 by ao ES6-shims.
  - [x] allows for suppression of compilation errors. This may seem strange to people coming from conventional statically typed languages. But the `tsc` lives in an untyped world. So it _will_ emit perfectly functional code even if some types can't be checked. Suppression of a specific error is particularly useful if one's using a library for which type information is not available. 
- - [x] uses Typescript 1.8.2
+ - [x] uses Typescript 1.8.7
  - [x] JS parts are written in Typescript.
  
 ###getting started with Typescript and Angular2
@@ -22,7 +22,7 @@ I've made an activator tutorial template to get you started. If you have activat
 Create a `tsconfig.json` file in the root of your project with the required [compiler options](https://github.com/Microsoft/TypeScript/wiki/Compiler-Options).  
 Add the following line to your `project\plugins.sbt`:
 
-    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.2.2")
+    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.2.3")
 
 If your project is not a Play application it will have to enable `sbt-web` in `build.sbt`:
 
@@ -54,7 +54,6 @@ The following `tsc` compiler options are managed by `sbt-typescript` so setting 
 
 ##status
 The plugin is young. Currently it is mostly tested against `EngineType.Node` and Angular2 applications with npm style dependencies.  
-The release 0.2.2 uses Typescript 1.8.2. If you want to try out Typescript 1.8.7 with your application you can use 0.2.3-SNAPSHOT.
 There are some other features I'm planning to implement.
 
 ##history

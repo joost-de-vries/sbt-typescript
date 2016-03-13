@@ -1,7 +1,7 @@
 sbtPlugin := true
 organization := "name.de-vries"
 name := "sbt-typescript"
-version := "0.2.3-SNAPSHOT"
+version := "0.2.3"
 
 homepage := Some(url("https://github.com/joost-de-vries/sbt-typescript"))
 licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
