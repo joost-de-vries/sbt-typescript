@@ -11,6 +11,7 @@ script:
   - sbt "scripted sbt-typescript/ignoreCanNotFindModule"
   - sbt "scripted sbt-typescript/inlinesourcemap"
   - sbt "scripted sbt-typescript/sourcemap"
+  - sbt "scripted sbt-typescript/testassets"
 
   # Tricks to avoid unnecessary cache updates
   - find $HOME/.sbt -name "*.lock" | xargs rm

@@ -7,7 +7,7 @@ import com.typesafe.sbt.jse.SbtJsTask
 import com.typesafe.sbt.web.PathMapping
 import com.typesafe.sbt.web.pipeline.Pipeline
 import sbt.Project.Initialize
-import sbt._
+import sbt.{File, _}
 import sbt.Keys._
 import spray.json._
 import com.typesafe.sbt.jse.SbtJsTask.autoImport.JsTaskKeys._
@@ -44,14 +44,14 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
   import autoImport._
 
   // wrt to out vs outFile see https://github.com/Microsoft/TypeScript/issues/5107
-  val typescriptUnscopedSettings = Seq(
+  def typescriptUnscopedSettings(config:Configuration) = Seq(
     includeFilter := GlobFilter("*.ts") | GlobFilter("*.tsx"),
     excludeFilter := GlobFilter("*.d.ts"),
     jsOptions := JsObject(Map(
       "logLevel" -> JsString(logLevel.value.toString),
       "tsconfig" -> parseTsConfig().value,
       "tsconfigDir" -> JsString(projectFile.value.getParent),
-      "assetsDir" -> JsString((sourceDirectory in Assets).value.getAbsolutePath),
+      "assetsDir" -> JsString((sourceDirectory in config).value.getAbsolutePath),
       "tsCodesToIgnore" -> JsArray(tsCodesToIgnore.value.toVector.map(JsNumber(_))),
       "nodeModulesDir" -> JsString(webJarsNodeModulesDirectory.value.getAbsolutePath),
       "resolveFromNodeModulesDir" -> JsBoolean(resolveFromWebjarsNodeModulesDir.value)
@@ -65,13 +65,13 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     typingsFile := None,
     resolveFromWebjarsNodeModulesDir := false,
     logLevel in typescript := Level.Info,
-    typescriptWrapperTask in Assets:= moveFiles().value,
-    typescriptWrapperTask in TestAssets:= moveFiles().value,
+    typescriptWrapperTask in Assets:= moveFilesTask(Assets).value,
+    typescriptWrapperTask in TestAssets:= moveFilesTask(TestAssets).value,
     JsEngineKeys.parallelism := 1
   ) ++ inTask(typescript)(
     SbtJsTask.jsTaskSpecificUnscopedSettings ++
-      inConfig(Assets)(typescriptUnscopedSettings) ++
-      inConfig(TestAssets)(typescriptUnscopedSettings) ++
+      inConfig(Assets)(typescriptUnscopedSettings(Assets)) ++
+      inConfig(TestAssets)(typescriptUnscopedSettings(TestAssets)) ++
       Seq(
         moduleName := "typescript",
         shellFile := getClass.getClassLoader.getResource("typescript.js"),
@@ -111,27 +111,39 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     ))
   }
 
-  def moveFiles() = Def.task {
-    val compiledFiles = typescript.value
-    //streams.value.log.info("received files"+compiledFiles)
-    val relAssetsPath = (sourceDirectory in Assets).value.relativeTo(baseDirectory.value)
+  def moveFilesTask(config:Configuration) = Def.task {
+    val compiledFiles = (typescript in config).value
+//    streams.value.log.info("received files"+compiledFiles)
+//    streams.value.log.info("base "+baseDirectory.value)
+//    streams.value.log.info("source "+(sourceDirectory in config).value)
+    val relAssetsPath = (sourceDirectory in config).value.relativeTo(baseDirectory.value)
 
-    val targetPath = (resourceManaged in typescript in Assets).value
-      // input is target/web/typescript/main/src/main/assets/x/y output is target/web/typescript/main/x/y
-      val copyMappings:Seq[(File,File)] = compiledFiles.map(f => {
-        val relativeToPath =targetPath / relAssetsPath.get.getPath
-        val relFilePath = f relativeTo relativeToPath
+    val targetPath = (resourceManaged in typescript in config).value
+    val movedFiles=moveFiles(compiledFiles, targetPath,relAssetsPath.get.getPath,streams.value.log)
+//    streams.value.log.info("moved files "+movedFiles.toString())
+    movedFiles
+  }
 
-        streams.value.log.debug(s"file $f relative to $relativeToPath is $relFilePath")
-        val targetFile = targetPath / relFilePath.get.getPath
-        (f, targetFile)
-      })
-      IO.copy(copyMappings).toSeq
+  def moveFiles(compiledFiles: Seq[File], targetPath: File, relAssetsPath:String,logger:Logger): Seq[File] = {
+    // input is target/web/typescript/main/src/main/assets/x/y output is target/web/typescript/main/x/y
+    val copyMappings: Seq[(File, File)] = compiledFiles.map(f => {
+      val relativeToPath = targetPath / relAssetsPath
+      val relFilePath = f relativeTo relativeToPath
+
+      //logger.info(s"file $f relative to $relativeToPath is $relFilePath")
+      val targetFile = targetPath / relFilePath.get.getPath
+      (f, targetFile)
+    })
+    IO.copy(copyMappings).toSeq
   }
 
   def parseTsConfig() = Def.task {
     val tsConfigFile = projectFile.value
 
+    parseJson(tsConfigFile)
+  }
+
+  def parseJson(tsConfigFile: File): JsValue = {
     val content = IO.read(tsConfigFile)
 
     JsonParser(removeComments(content))

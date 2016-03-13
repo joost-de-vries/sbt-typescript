@@ -1,0 +1,3 @@
+# check handling of test assets
+> test
+$ exists target/web/typescript/test/javascripts/testgreeter.js
