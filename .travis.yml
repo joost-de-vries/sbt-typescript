@@ -3,8 +3,8 @@ sudo: required
 language: scala
 cache:
   directories:
-    - $HOME/.ivy2/cache
-    - $HOME/.sbt/boot/
+  - $HOME/.ivy2/cache
+  - $HOME/.sbt/boot/
 node_js: "5.6"
 jdk: oraclejdk7
 script:
