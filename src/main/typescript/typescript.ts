@@ -6,11 +6,7 @@ import {
     Diagnostic,
     SourceFile,
     CompilerOptions,
-    DiagnosticMessageChain,
     DiagnosticCategory,
-    CompilerHost,
-    ResolvedModule,
-    ScriptTarget
 } from "typescript"
 
 const fs = require("fs")
@@ -20,7 +16,6 @@ const args:Args = parseArgs(process.argv)
 const sbtTypescriptOpts:SbtTypescriptOptions = args.options
 
 const logger = new Logger(sbtTypescriptOpts.logLevel)
-const logModuleResolution = false
 
 const sourceMappings = new SourceMappings(args.sourceFileMappings)
 
@@ -47,10 +42,23 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
     else {
         compilerOptions.outDir = target
 
-        let resolutionDirs:string[] = []
-        if (sbtTypescriptOpts.resolveFromNodeModulesDir) resolutionDirs.push(sbtTypescriptOpts.nodeModulesDir)
+        if (sbtTypescriptOpts.resolveFromNodeModulesDir) {
+            // see https://github.com/Microsoft/TypeScript-Handbook/blob/release-2.0/pages/Module%20Resolution.md#path-mapping
+            compilerOptions.baseUrl="."
+            const paths = {
+                "*": ["*",sbtTypescriptOpts.nodeModulesDir +"/*"]
+            }
+            compilerOptions.paths = paths
+            // "baseUrl": ".",
+            //     "paths": {
+            //     "*": [
+            //         "*",
+            //         "generated/*"
+            //     ]
+            // }
+        }
         logger.debug("using tsc options ", compilerOptions)
-        const compilerHost = createCompilerHost(compilerOptions, resolutionDirs)
+        const compilerHost = ts.createCompilerHost(compilerOptions)
 
         let filesToCompile = sourceMaps.asAbsolutePaths()
         if (sbtTypescriptOpts.extraFiles) filesToCompile = filesToCompile.concat(sbtTypescriptOpts.extraFiles)
@@ -212,37 +220,5 @@ function parseDiagnostic(d:Diagnostic):Problem {
         } else {
             return "error"
         }
-    }
-}
-
-function createCompilerHost(options:CompilerOptions, moduleSearchLocations:string[]):CompilerHost {
-    const cHost = ts.createCompilerHost(options)
-    cHost.resolveModuleNames = resolveModuleNames
-    return cHost
-
-    function resolveModuleNames(moduleNames:string[], containingFile:string):ResolvedModule[] {
-        return moduleNames.map(moduleName => {
-            // try to use standard resolution
-            let result = ts.resolveModuleName(moduleName, containingFile, options, cHost)
-            if (result.resolvedModule) {
-                // logger.debug("found ",result.resolvedModule)
-                return result.resolvedModule
-            }
-
-            // logger.debug("try extra resolution dirs "+moduleName,moduleSearchLocations)
-            // check fallback locations, for simplicity assume that module at location should be represented by '.d.ts' file
-            for (const location of moduleSearchLocations) {
-                const modulePath = path.join(location, moduleName + ".d.ts")
-                if (cHost.fileExists(modulePath)) {
-                    const resolvedModule = {resolvedFileName: modulePath}
-                    if (logger.logLevel === "debug" && logModuleResolution) logger.debug("found in extra location ", resolvedModule)
-                    return resolvedModule
-                }
-            }
-
-            if (logger.logLevel === "warn") logger.warn("could not find " + moduleName)
-
-            return undefined
-        })
     }
 }

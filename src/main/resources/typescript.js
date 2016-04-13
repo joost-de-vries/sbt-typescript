@@ -133,12 +133,12 @@ function replaceFileExtension(file, ext) {
     var oldExt = path.extname(file);
     return file.substring(0, file.length - oldExt.length) + ext;
 }
+
 var fs = require("fs");
 var ts = require("typescript");
 var args = parseArgs(process.argv);
 var sbtTypescriptOpts = args.options;
 var logger = new Logger(sbtTypescriptOpts.logLevel);
-var logModuleResolution = false;
 var sourceMappings = new SourceMappings(args.sourceFileMappings);
 logger.debug("starting compilation of ", sourceMappings.mappings.map(function (sm) { return sm.relativePath; }));
 logger.debug("from ", sbtTypescriptOpts.assetsDir);
@@ -156,11 +156,15 @@ function compile(sourceMaps, sbtOptions, target) {
     }
     else {
         compilerOptions.outDir = target;
-        var resolutionDirs = [];
-        if (sbtTypescriptOpts.resolveFromNodeModulesDir)
-            resolutionDirs.push(sbtTypescriptOpts.nodeModulesDir);
+        if (sbtTypescriptOpts.resolveFromNodeModulesDir) {
+            compilerOptions.baseUrl = ".";
+            var paths = {
+                "*": ["*", sbtTypescriptOpts.nodeModulesDir + "/*"]
+            };
+            compilerOptions.paths = paths;
+        }
         logger.debug("using tsc options ", compilerOptions);
-        var compilerHost = createCompilerHost(compilerOptions, resolutionDirs);
+        var compilerHost = ts.createCompilerHost(compilerOptions);
         var filesToCompile = sourceMaps.asAbsolutePaths();
         if (sbtTypescriptOpts.extraFiles)
             filesToCompile = filesToCompile.concat(sbtTypescriptOpts.extraFiles);
@@ -300,31 +304,5 @@ function parseDiagnostic(d) {
         else {
             return "error";
         }
-    }
-}
-function createCompilerHost(options, moduleSearchLocations) {
-    var cHost = ts.createCompilerHost(options);
-    cHost.resolveModuleNames = resolveModuleNames;
-    return cHost;
-    function resolveModuleNames(moduleNames, containingFile) {
-        return moduleNames.map(function (moduleName) {
-            var result = ts.resolveModuleName(moduleName, containingFile, options, cHost);
-            if (result.resolvedModule) {
-                return result.resolvedModule;
-            }
-            for (var _i = 0, moduleSearchLocations_1 = moduleSearchLocations; _i < moduleSearchLocations_1.length; _i++) {
-                var location_1 = moduleSearchLocations_1[_i];
-                var modulePath = path.join(location_1, moduleName + ".d.ts");
-                if (cHost.fileExists(modulePath)) {
-                    var resolvedModule = { resolvedFileName: modulePath };
-                    if (logger.logLevel === "debug" && logModuleResolution)
-                        logger.debug("found in extra location ", resolvedModule);
-                    return resolvedModule;
-                }
-            }
-            if (logger.logLevel === "warn")
-                logger.warn("could not find " + moduleName);
-            return undefined;
-        });
     }
 }
