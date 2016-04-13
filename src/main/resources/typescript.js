@@ -3,24 +3,24 @@ var path = require("path");
 var Logger = (function () {
     function Logger(logLevel) {
         this.logLevel = logLevel;
-        this.isDebug = 'debug' === this.logLevel;
+        this.isDebug = "debug" === this.logLevel;
     }
     Logger.prototype.debug = function (message, object) {
-        if (this.logLevel === 'debug' && object)
+        if (this.logLevel === "debug" && object)
             console.log(message, object);
-        else if (this.logLevel === 'debug')
+        else if (this.logLevel === "debug")
             console.log(message);
     };
     Logger.prototype.info = function (message) {
-        if (this.logLevel === 'debug' || this.logLevel === 'info')
+        if (this.logLevel === "debug" || this.logLevel === "debug")
             console.log(message);
     };
     Logger.prototype.warn = function (message) {
-        if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn')
+        if (this.logLevel === "debug" || this.logLevel === "info" || this.logLevel === "warn")
             console.log(message);
     };
     Logger.prototype.error = function (message, error) {
-        if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn' || this.logLevel === 'error') {
+        if (this.logLevel === "debug" || this.logLevel === "info" || this.logLevel === "warn" || this.logLevel === "error") {
             if (error !== undefined) {
                 var errorMessage = error.message;
                 if (error.fileName !== undefined) {
@@ -54,6 +54,7 @@ var None = (function () {
     function None() {
     }
     None.prototype.foreach = function (f) {
+        return;
     };
     None.prototype.map = function (f) {
         return new None();
@@ -86,7 +87,7 @@ var SourceMappings = (function () {
     SourceMappings.prototype.find = function (sourceFileName) {
         var absPath = path.normalize(sourceFileName);
         var index = this.asAbsolutePaths().indexOf(absPath);
-        if (index != -1) {
+        if (index !== -1) {
             return new Some(this.mappings[index]);
         }
         else {
@@ -109,9 +110,9 @@ function parseArgs(args) {
     }
     catch (e) {
         sourceFileMappings = [[
-                path.join(cwd, args[SOURCE_FILE_MAPPINGS_ARG]),
-                args[SOURCE_FILE_MAPPINGS_ARG]
-            ]];
+            path.join(cwd, args[SOURCE_FILE_MAPPINGS_ARG]),
+            args[SOURCE_FILE_MAPPINGS_ARG]
+        ]];
     }
     var target = (args.length > TARGET_ARG ? args[TARGET_ARG] : path.join(cwd, "lib"));
     var options;
@@ -243,9 +244,9 @@ function toCompilationResult(sourceMappings, compilerOptions, targetDir) {
                 }
             }
             function fixSourceMapFile(file) {
-                var sourceMap = JSON.parse(fs.readFileSync(file, 'utf-8'));
+                var sourceMap = JSON.parse(fs.readFileSync(file, "utf-8"));
                 sourceMap.sources = sourceMap.sources.map(function (source) { return path.basename(source); });
-                fs.writeFileSync(file, JSON.stringify(sourceMap), 'utf-8');
+                fs.writeFileSync(file, JSON.stringify(sourceMap), "utf-8");
             }
         });
     };

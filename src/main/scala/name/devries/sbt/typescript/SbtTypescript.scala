@@ -1,12 +1,10 @@
 package name.devries.sbt.typescript
 
-import java.io.File
 
 import com.typesafe.sbt.jse.JsEngineImport.JsEngineKeys
 import com.typesafe.sbt.jse.SbtJsTask
 import com.typesafe.sbt.web.PathMapping
 import com.typesafe.sbt.web.pipeline.Pipeline
-import sbt.Project.Initialize
 import sbt.{File, _}
 import sbt.Keys._
 import spray.json._
@@ -14,7 +12,7 @@ import com.typesafe.sbt.jse.SbtJsTask.autoImport.JsTaskKeys._
 import com.typesafe.sbt.web.Import.WebKeys._
 import com.typesafe.sbt.web.SbtWeb.autoImport._
 
-object SbtTypescript extends AutoPlugin with JsonProtocol {
+object SbtTypescript extends AutoPlugin with JsonProtocol with JsTask{
 
   override def requires = SbtJsTask
 
@@ -84,32 +82,6 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     typescript in TestAssets := (typescript in TestAssets).dependsOn(webJarsNodeModules in TestAssets).value
   )
 
-  /** adapted from SbtJsTask.addJsSourceFileTasks */
-  def addJsSourceFileTasks(): Seq[Setting[_]] = {
-    Seq(
-      sourceDependencies in typescript := Nil,
-      typescript in Assets := SbtJsTask.jsSourceFileTask(typescript, Assets).dependsOn(nodeModules in Plugin).value,
-      typescript in TestAssets := SbtJsTask.jsSourceFileTask(typescript, TestAssets).dependsOn(nodeModules in Plugin).value,
-      resourceManaged in typescript in Assets := webTarget.value / typescript.key.label / "main",
-      resourceManaged in typescript in TestAssets := webTarget.value / typescript.key.label / "test",
-      typescript := (typescript in Assets).value
-    ) ++
-      inConfig(Assets)(addUnscopedJsSourceFileTasks()) ++
-      inConfig(TestAssets)(addUnscopedJsSourceFileTasks())
-  }
-
-  /** adapted from SbtJsTask.addUnscopedJsSourceFileTasks */
-  private def addUnscopedJsSourceFileTasks(): Seq[Setting[_]] = {
-    Seq(
-      resourceGenerators <+= typescriptWrapperTask,
-      managedResourceDirectories += (resourceManaged in typescript).value
-    ) ++ inTask(typescript)(Seq(
-      managedSourceDirectories ++= Def.settingDyn { sourceDependencies.value.map(resourceManaged in _).join }.value,
-      managedSources ++= Def.taskDyn { sourceDependencies.value.join.map(_.flatten) }.value,
-      sourceDirectories := unmanagedSourceDirectories.value ++ managedSourceDirectories.value,
-      sources := unmanagedSources.value ++ managedSources.value
-    ))
-  }
 
   def moveFilesTask(config:Configuration) = Def.task {
     val compiledFiles = (typescript in config).value

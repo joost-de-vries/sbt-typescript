@@ -1,40 +1,40 @@
 
 /** this file contains code that has no dependencies on external modules */
-const path = require("path");
+const path = require("path")
 
 class Logger {
     public isDebug:boolean
 
     constructor(public logLevel:string) {
-        this.isDebug = 'debug' === this.logLevel
+        this.isDebug = "debug" === this.logLevel
     }
 
     debug(message:string, object?:any) {
-        if (this.logLevel === 'debug' && object)console.log(message, object)
-        else if (this.logLevel === 'debug') console.log(message)
+        if (this.logLevel === "debug" && object)console.log(message, object)
+        else if (this.logLevel === "debug") console.log(message)
     }
 
     info(message:string) {
-        if (this.logLevel === 'debug' || this.logLevel === 'info') console.log(message);
+        if (this.logLevel === "debug" || this.logLevel === "debug") console.log(message)
     }
 
     warn(message:string) {
-        if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn') console.log(message);
+        if (this.logLevel === "debug" || this.logLevel === "info" || this.logLevel === "warn") console.log(message)
     }
 
     error(message:string, error?:any) {
-        if (this.logLevel === 'debug' || this.logLevel === 'info' || this.logLevel === 'warn' || this.logLevel === 'error') {
+        if (this.logLevel === "debug" || this.logLevel === "info" || this.logLevel === "warn" || this.logLevel === "error") {
             if (error !== undefined) {
-                let errorMessage = error.message;
+                let errorMessage = error.message
                 if (error.fileName !== undefined) {
-                    errorMessage = errorMessage + " in " + error.fileName;
+                    errorMessage = errorMessage + " in " + error.fileName
                 }
                 if (error.lineNumber !== undefined) {
-                    errorMessage = errorMessage + " at line " + error.lineNumber;
+                    errorMessage = errorMessage + " at line " + error.lineNumber
                 }
-                console.log(message + " " + errorMessage);
+                console.log(message + " " + errorMessage)
             } else {
-                console.log(message);
+                console.log(message)
             }
         }
     }
@@ -61,6 +61,7 @@ class Some<T> {
 }
 class None<T> implements Option<T> {
     foreach(f:(t:T)=>any) {
+        return
     }
 
     map<B>(f:(t:T)=>B):Option<B> {
@@ -84,7 +85,7 @@ class SourceMapping {
     toOutputPath(targetDir:string, extension:string) {
         return path.join(targetDir,
             replaceFileExtension(path.normalize(this.relativePath), extension)
-        );
+        )
     }
 }
 
@@ -106,7 +107,7 @@ class SourceMappings {
     find(sourceFileName:string):Option<SourceMapping> {
         const absPath = path.normalize(sourceFileName)
         const index = this.asAbsolutePaths().indexOf(absPath)
-        if (index != -1) {
+        if (index !== -1) {
             return new Some(this.mappings[index])
 
         } else {
@@ -132,7 +133,7 @@ interface CompilationResult {
 function compileDone(compileResult:CompilationResult) {
     // datalink escape character https://en.wikipedia.org/wiki/C0_and_C1_control_codes#DLE
     // used to signal result of compilation see https://github.com/sbt/sbt-js-engine/blob/master/src/main/scala/com/typesafe/sbt/jse/SbtJsTask.scala
-    console.log("\u0010" + JSON.stringify(compileResult));
+    console.log("\u0010" + JSON.stringify(compileResult))
 }
 
 interface Problem {
@@ -145,40 +146,40 @@ interface Problem {
 }
 
 /** interfacing with sbt */
-//from jstranspiler
+// from jstranspiler
 function parseArgs(args:string[]):Args {
 
-    const SOURCE_FILE_MAPPINGS_ARG = 2;
-    const TARGET_ARG = 3;
-    const OPTIONS_ARG = 4;
+    const SOURCE_FILE_MAPPINGS_ARG = 2
+    const TARGET_ARG = 3
+    const OPTIONS_ARG = 4
 
-    const cwd = process.cwd();
+    const cwd = process.cwd()
 
-    let sourceFileMappings:string[][];
+    let sourceFileMappings:string[][]
     try {
-        sourceFileMappings = JSON.parse(args[SOURCE_FILE_MAPPINGS_ARG]);
+        sourceFileMappings = JSON.parse(args[SOURCE_FILE_MAPPINGS_ARG])
     } catch (e) {
         sourceFileMappings = [[
             path.join(cwd, args[SOURCE_FILE_MAPPINGS_ARG]),
             args[SOURCE_FILE_MAPPINGS_ARG]
-        ]];
+        ]]
     }
 
-    let target = (args.length > TARGET_ARG ? args[TARGET_ARG] : path.join(cwd, "lib"));
+    let target = (args.length > TARGET_ARG ? args[TARGET_ARG] : path.join(cwd, "lib"))
 
-    let options:SbtTypescriptOptions;
+    let options:SbtTypescriptOptions
     if (target.length > 0 && target.charAt(0) === "{") {
-        options = JSON.parse(target);
-        target = path.join(cwd, "lib");
+        options = JSON.parse(target)
+        target = path.join(cwd, "lib")
     } else {
-        options = (args.length > OPTIONS_ARG ? JSON.parse(args[OPTIONS_ARG]) : {});
+        options = (args.length > OPTIONS_ARG ? JSON.parse(args[OPTIONS_ARG]) : {})
     }
 
     return <Args>{
         sourceFileMappings: sourceFileMappings,
         target: target,
         options: options
-    };
+    }
 }
 
 interface Args {
@@ -199,6 +200,6 @@ interface SbtTypescriptOptions {
 }
 
 function replaceFileExtension(file:string, ext:string) {
-    let oldExt = path.extname(file);
-    return file.substring(0, file.length - oldExt.length) + ext;
+    let oldExt = path.extname(file)
+    return file.substring(0, file.length - oldExt.length) + ext
 }

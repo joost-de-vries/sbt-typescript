@@ -14,18 +14,18 @@ import {
 } from "typescript"
 
 const fs = require("fs")
-const ts = require("typescript");
+const ts = require("typescript")
 
-const args:Args = parseArgs(process.argv);
+const args:Args = parseArgs(process.argv)
 const sbtTypescriptOpts:SbtTypescriptOptions = args.options
 
-const logger = new Logger(sbtTypescriptOpts.logLevel);
+const logger = new Logger(sbtTypescriptOpts.logLevel)
 const logModuleResolution = false
 
 const sourceMappings = new SourceMappings(args.sourceFileMappings)
 
-logger.debug("starting compilation of ", sourceMappings.mappings.map((sm)=> sm.relativePath));
-logger.debug("from ", sbtTypescriptOpts.assetsDir);
+logger.debug("starting compilation of ", sourceMappings.mappings.map((sm)=> sm.relativePath))
+logger.debug("from ", sbtTypescriptOpts.assetsDir)
 logger.debug("to ", args.target)
 logger.debug("args ", args)
 
@@ -39,36 +39,36 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
 
     const targetDir = determineTargetAssetsDir(sbtOptions)
 
-    const { options: compilerOptions, errors } = toCompilerOptions(sbtOptions)
-    
+    const {options: compilerOptions, errors} = toCompilerOptions(sbtOptions)
+
     if (errors.length > 0) {
         problems.push(...toProblems(errors, sbtOptions.tsCodesToIgnore))
     }
     else {
-        compilerOptions.outDir = target;
+        compilerOptions.outDir = target
 
         let resolutionDirs:string[] = []
         if (sbtTypescriptOpts.resolveFromNodeModulesDir) resolutionDirs.push(sbtTypescriptOpts.nodeModulesDir)
-        logger.debug("using tsc options ", compilerOptions);
-        const compilerHost = createCompilerHost(compilerOptions, resolutionDirs);
+        logger.debug("using tsc options ", compilerOptions)
+        const compilerHost = createCompilerHost(compilerOptions, resolutionDirs)
 
         let filesToCompile = sourceMaps.asAbsolutePaths()
         if (sbtTypescriptOpts.extraFiles) filesToCompile = filesToCompile.concat(sbtTypescriptOpts.extraFiles)
 
-        const program:Program = ts.createProgram(filesToCompile, compilerOptions, compilerHost);
+        const program:Program = ts.createProgram(filesToCompile, compilerOptions, compilerHost)
         logger.debug("created program")
         problems.push(...findPreemitProblems(program, sbtOptions.tsCodesToIgnore))
 
-        const emitOutput = program.emit();
+        const emitOutput = program.emit()
 
-        problems.push(...toProblems(emitOutput.diagnostics, sbtOptions.tsCodesToIgnore));
+        problems.push(...toProblems(emitOutput.diagnostics, sbtOptions.tsCodesToIgnore))
 
         if (logger.isDebug) {
             const declarationFiles = program.getSourceFiles().filter(isDeclarationFile)
             logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.")
         }
 
-        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions, targetDir)));
+        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions, targetDir)))
     }
 
     logger.debug("files written", results.map((r)=> r.result.filesWritten))
@@ -76,19 +76,19 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
     const output = <CompilationResult>{
         results: results,
         problems: problems
-    };
-    return output;
+    }
+    return output
 
-    function toCompilerOptions(sbtOptions:SbtTypescriptOptions):{ options: CompilerOptions, errors: Diagnostic[] }{
+    function toCompilerOptions(sbtOptions:SbtTypescriptOptions):{ options:CompilerOptions, errors:Diagnostic[] } {
         const unparsedCompilerOptions:any = sbtOptions.tsconfig["compilerOptions"]
-        //logger.debug("compilerOptions ", unparsedCompilerOptions)
+        // logger.debug("compilerOptions ", unparsedCompilerOptions)
         if (unparsedCompilerOptions.outFile) {
             const outFile = path.join(targetDir, path.basename(unparsedCompilerOptions.outFile))
             logger.debug("single outFile ", outFile)
             unparsedCompilerOptions.outFile = outFile
         }
         unparsedCompilerOptions.rootDir = sbtOptions.tsconfigDir
-        return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json");
+        return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json")
 
     }
 
@@ -107,7 +107,7 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
     }
 
     function flatten<T>(xs:Option<T>[]):T[] {
-        var result:T[] = []
+        let result:T[] = []
         xs.forEach(x => {
             if (x.value) result.push(x.value)
         })
@@ -118,22 +118,22 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
 function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:CompilerOptions, targetDir:string):(sf:SourceFile)=> Option<CompilationFileResult> {
     return sourceFile => {
         return sourceMappings.find(sourceFile.fileName).map((sm)=> {
-            //logger.debug("source file is ",sourceFile.fileName)
-            let deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(f => f.fileName));
+            // logger.debug("source file is ",sourceFile.fileName)
+            let deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(f => f.fileName))
 
-            let outputFile = determineOutFile(sm.toOutputPath(targetDir, ".js"), compilerOptions, targetDir);
+            let outputFile = determineOutFile(sm.toOutputPath(targetDir, ".js"), compilerOptions, targetDir)
 
-            let filesWritten = [outputFile];
+            let filesWritten = [outputFile]
 
             if (compilerOptions.declaration) {
-                let outputFileDeclaration = sm.toOutputPath(targetDir, ".d.ts");
-                filesWritten.push(outputFileDeclaration);
+                let outputFileDeclaration = sm.toOutputPath(targetDir, ".d.ts")
+                filesWritten.push(outputFileDeclaration)
             }
 
             if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
-                let outputFileMap = outputFile + ".map";
-                fixSourceMapFile(outputFileMap);
-                filesWritten.push(outputFileMap);
+                let outputFileMap = outputFile + ".map"
+                fixSourceMapFile(outputFileMap)
+                filesWritten.push(outputFileMap)
             }
 
             const result = <CompilationFileResult>{
@@ -142,7 +142,7 @@ function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:Comp
                     filesRead: deps,
                     filesWritten: filesWritten
                 }
-            };
+            }
             return result
 
             function determineOutFile(outFile:string, options:CompilerOptions, targetDir:string):string {
@@ -155,9 +155,9 @@ function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:Comp
             }
 
             function fixSourceMapFile(file:string) {
-                let sourceMap = JSON.parse(fs.readFileSync(file, 'utf-8'));
-                sourceMap.sources = sourceMap.sources.map((source:string)=> path.basename(source));
-                fs.writeFileSync(file, JSON.stringify(sourceMap), 'utf-8');
+                let sourceMap = JSON.parse(fs.readFileSync(file, "utf-8"))
+                sourceMap.sources = sourceMap.sources.map((source:string)=> path.basename(source))
+                fs.writeFileSync(file, JSON.stringify(sourceMap), "utf-8")
             }
         })
     }
@@ -180,16 +180,16 @@ function ignoreDiagnostic(tsIgnoreList:number[]):(d:Diagnostic)=> boolean {
 }
 
 function parseDiagnostic(d:Diagnostic):Problem {
-    let lineCol = {line: 0, character: 0};
-    let fileName = "tsconfig.json";
-    let lineText = "";
+    let lineCol = {line: 0, character: 0}
+    let fileName = "tsconfig.json"
+    let lineText = ""
     if (d.file) {
-        lineCol = d.file.getLineAndCharacterOfPosition(d.start);
+        lineCol = d.file.getLineAndCharacterOfPosition(d.start)
 
-        let lineStart = d.file.getLineStarts()[lineCol.line];
-        let lineEnd = d.file.getLineStarts()[lineCol.line + 1];
-        lineText = d.file.text.substring(lineStart, lineEnd);
-        fileName = d.file.fileName;
+        let lineStart = d.file.getLineStarts()[lineCol.line]
+        let lineEnd = d.file.getLineStarts()[lineCol.line + 1]
+        lineText = d.file.text.substring(lineStart, lineEnd)
+        fileName = d.file.fileName
     }
 
     let problem = <Problem>{
@@ -199,16 +199,16 @@ function parseDiagnostic(d:Diagnostic):Problem {
         source: fileName,
         severity: toSeverity(d.category),
         lineContent: lineText
-    };
-    return problem;
+    }
+    return problem
 
     function toSeverity(i:DiagnosticCategory):string {
         if (i === 0) {
-            return "warn";
+            return "warn"
         } else if (i === 1) {
-            return "error";
+            return "error"
         } else if (i === 2) {
-            return "info";
+            return "info"
         } else {
             return "error"
         }
@@ -223,16 +223,16 @@ function createCompilerHost(options:CompilerOptions, moduleSearchLocations:strin
     function resolveModuleNames(moduleNames:string[], containingFile:string):ResolvedModule[] {
         return moduleNames.map(moduleName => {
             // try to use standard resolution
-            let result = ts.resolveModuleName(moduleName, containingFile, options, cHost);
+            let result = ts.resolveModuleName(moduleName, containingFile, options, cHost)
             if (result.resolvedModule) {
-                //logger.debug("found ",result.resolvedModule)
-                return result.resolvedModule;
+                // logger.debug("found ",result.resolvedModule)
+                return result.resolvedModule
             }
 
-            //logger.debug("try extra resolution dirs "+moduleName,moduleSearchLocations)
+            // logger.debug("try extra resolution dirs "+moduleName,moduleSearchLocations)
             // check fallback locations, for simplicity assume that module at location should be represented by '.d.ts' file
             for (const location of moduleSearchLocations) {
-                const modulePath = path.join(location, moduleName + ".d.ts");
+                const modulePath = path.join(location, moduleName + ".d.ts")
                 if (cHost.fileExists(modulePath)) {
                     const resolvedModule = {resolvedFileName: modulePath}
                     if (logger.logLevel === "debug" && logModuleResolution) logger.debug("found in extra location ", resolvedModule)
@@ -242,7 +242,7 @@ function createCompilerHost(options:CompilerOptions, moduleSearchLocations:strin
 
             if (logger.logLevel === "warn") logger.warn("could not find " + moduleName)
 
-            return undefined;
-        });
+            return undefined
+        })
     }
 }
