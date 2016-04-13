@@ -67,7 +67,7 @@ Kudos to Brendan Arp for his [javascript tsc driver](https://github.com/ArpNetwo
 - upgrades to typescript 1.8.10
 
 #### v0.2.3
-- upgrades to typescript 1.8.2
+- upgrades to typescript 1.8.7
 - adds support for tests in typescript
 
 #### v0.2.2 
