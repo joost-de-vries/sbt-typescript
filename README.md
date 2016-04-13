@@ -12,6 +12,7 @@ As such it
  - [x] allows resolution of module imports against webjars. Since every Angular2 application uses ES6 module imports this is obviously an important requirement.
  - [x] allows for including typings files in the build. This is essential for compilation to ES5 because the standard ES5 lib doesn't have some types that f.i. Angular2 needs. These types are offered for ES5 by ao ES6-shims.
  - [x] allows for suppression of compilation errors. This may seem strange to people coming from conventional statically typed languages. But the `tsc` lives in an untyped world. So it _will_ emit perfectly functional code even if some types can't be checked. Suppression of a specific error is particularly useful if one's using a library for which type information is not available. 
+ - [x] supports writing unittests in typescript
  - [x] uses Typescript 1.8.10
  - [x] JS parts are written in Typescript.
  
@@ -62,6 +63,10 @@ And since I'd like Play and sbt(-web) to be kickass build tools for Typescript a
 Kudos to Brendan Arp for his [javascript tsc driver](https://github.com/ArpNetworking/sbt-typescript/blob/master/src/main/resources/typescriptc.js) to get me started. And also to all of the other plugins mentioned [here](https://github.com/sbt/sbt-web). Open source is an amazing tool for collective learning. Just imagine those poor programmers in the 1970s with only IBM manuals to provide them with information.
 
 ###release notes
+
+#### v0.3.0SNAPSHOT 
+- uses standard typescript functionality to resolve against webjars. Instead of the previous custom rolled module resolution extension.
+- uses a snapshot of the upcoming typescript 2.0
 
 #### v0.2.4
 - upgrades to typescript 1.8.10
