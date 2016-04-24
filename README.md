@@ -23,11 +23,13 @@ I've made an activator tutorial template to get you started. If you have activat
 Create a `tsconfig.json` file in the root of your project with the required [compiler options](https://github.com/Microsoft/TypeScript/wiki/Compiler-Options).  
 Add the following line to your `project\plugins.sbt`:
 
-    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.2.4")
+    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.2.5")
 
 If your project is not a Play application it will have to enable `sbt-web` in `build.sbt`:
 
     lazy val root = (project in file(".")).enablePlugins(SbtWeb)
+    
+You can develop using individual javascript files when running `sbt ~run` in Play and have your whole typescript application concatenated into a single javascript output file for your stage environment without changes to your sources. To do that you have to add a `-DtsCompileMode=stage` parameter to the sbt task in your CI that creates the stage app. So for Play that will often be `sbt stage -DtsCompileMode=stage`.  
     
 ####typings
 If you have a [typings](https://github.com/typings/typings) file you can add it like this:
@@ -52,6 +54,7 @@ If you are importing modules for which you don't have the typings you can ignore
 The following `tsc` compiler options are managed by `sbt-typescript` so setting them in `tsconfig.json` has no effect: 
  - `outDir` and 
  - `rootDir`.  
+If you use the `stage` compile mode the `outFile` option is also managed by `sbt-typescript`.  
 
 ##status
 The plugin is young. Currently it is mostly tested against `EngineType.Node` and Angular2 applications with npm style dependencies.  
@@ -67,6 +70,9 @@ Kudos to Brendan Arp for his [javascript tsc driver](https://github.com/ArpNetwo
 #### v0.3.0SNAPSHOT 
 - uses standard typescript functionality to resolve against webjars. Instead of the previous custom rolled module resolution extension.
 - uses a snapshot of the upcoming typescript 2.0
+
+#### v0.2.5
+- allows for developing using individual javascript files and using a single javascript file in production
 
 #### v0.2.4
 - upgrades to typescript 1.8.10
