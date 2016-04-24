@@ -122,7 +122,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol with JsTask {
   }
 
   def moveFilesTask(config: Configuration) = Def.task {
-    streams.value.log.info(s"typescript runmode is ${getCompileMode.value}")
+    streams.value.log.debug(s"typescript compilation mode is ${getCompileMode.value}")
 
     val compiledFiles = (typescript in config).value
     //    streams.value.log.info("received files"+compiledFiles)
