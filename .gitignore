@@ -23,6 +23,6 @@ project/project
 node_modules
 typings/
 
-sbt-typescript-plugin-tester/target
-sbt-typescript-plugin-tester/project/target
-sbt-typescript-plugin-tester/project/project
+example/target
+example/project/target
+example/project/project
