@@ -38,7 +38,7 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
     let results:CompilationFileResult[] = []
 
     const targetDir = determineTargetAssetsDir(sbtOptions)
-
+    
     const {options: compilerOptions, errors} = toCompilerOptions(sbtOptions)
 
     if (errors.length > 0) {
@@ -46,7 +46,7 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
     }
     else {
         compilerOptions.outDir = target
-
+        
         let resolutionDirs:string[] = []
         if (sbtTypescriptOpts.resolveFromNodeModulesDir) resolutionDirs.push(sbtTypescriptOpts.nodeModulesDir)
         logger.debug("using tsc options ", compilerOptions)

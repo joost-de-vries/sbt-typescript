@@ -1,0 +1,15 @@
+{
+  /* the compiler options */
+  "compilerOptions": {
+    "module": "system",
+    "noImplicitAny": true,
+    "removeComments": true,
+    "preserveConstEnums": true,
+    "sourceMap": true,
+    "charset": "utf8"
+  },
+  /* ignored */
+  "exclude": [
+    "project"
+  ]
+}
