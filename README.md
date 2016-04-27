@@ -71,6 +71,9 @@ Kudos to Brendan Arp for his [javascript tsc driver](https://github.com/ArpNetwo
 - uses standard typescript functionality to resolve against webjars. Instead of the previous custom rolled module resolution extension.
 - uses a snapshot of the upcoming typescript 2.0
 
+#### v0.2.6
+- fixes jstaskfailure error
+
 #### v0.2.5
 - allows for developing using individual javascript files and using a single javascript file in production
 
