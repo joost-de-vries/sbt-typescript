@@ -171,7 +171,6 @@ object SbtTypescript extends AutoPlugin with JsonProtocol with JsTask {
       co = coJsValue.asJsObject
       newCo = JsObject(co.fields - "outDir" ++ Map("outFile"->JsString(outFile.value)))
     }yield  JsObject(tsConfigObject.fields ++ Map("compilerOptions"-> newCo))
-    streams.value.log.info(s"tsconfig is $newTsConfigObject")
       newTsConfigObject.getOrElse(tsConfigObject)
   }
 
