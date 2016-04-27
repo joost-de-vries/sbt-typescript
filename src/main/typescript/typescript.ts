@@ -47,13 +47,6 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
                 "*": ["*",sbtTypescriptOpts.nodeModulesDir +"/*"]
             }
             compilerOptions.paths = paths
-            // "baseUrl": ".",
-            //     "paths": {
-            //     "*": [
-            //         "*",
-            //         "generated/*"
-            //     ]
-            // }
         }
         logger.debug("using tsc options ", compilerOptions)
         const compilerHost = ts.createCompilerHost(compilerOptions)
