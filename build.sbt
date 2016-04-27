@@ -10,7 +10,7 @@ scalaVersion := "2.10.6"
 scalacOptions += "-feature"
 
 libraryDependencies ++= Seq(
-  "org.webjars.npm" % "typescript" % "1.9.0-dev.20160413",
+  "org.webjars.npm" % "typescript" % "1.9.0-dev.20160426",
   "org.webjars" % "mkdirp" % "0.3.5"
 )
 
