@@ -1,4 +1,4 @@
-# check handling of outFile setting
+# check handling of emitting of single outfile in combination with external modules
 > assets
 $ exists target/web/public/main/outfile.js
 -$ exists target/web/public/main/javascripts/greeter.js

@@ -6,7 +6,7 @@ import com.typesafe.sbt.web.Import.WebKeys._
 import com.typesafe.sbt.web.Import._
 import sbt.Keys._
 import sbt.{Def, _}
-import SbtTypescript.typescriptWrapperTask
+//import SbtTypescript.typescriptWrapperTask
 import SbtTypescript.autoImport._
 import akka.actor.ActorRef
 import akka.util.Timeout
@@ -44,7 +44,7 @@ trait JsTask {
   /** adapted from SbtJsTask.addUnscopedJsSourceFileTasks */
   private def addUnscopedJsSourceFileTasks(): Seq[Setting[_]] = {
     Seq(
-      resourceGenerators <+= typescriptWrapperTask,
+      resourceGenerators <+= typescript,
       managedResourceDirectories += (resourceManaged in typescript).value
     ) ++ inTask(typescript)(Seq(
       managedSourceDirectories ++= Def.settingDyn { sourceDependencies.value.map(resourceManaged in _).join }.value,
