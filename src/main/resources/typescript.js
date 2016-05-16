@@ -133,7 +133,6 @@ function replaceFileExtension(file, ext) {
     var oldExt = path.extname(file);
     return file.substring(0, file.length - oldExt.length) + ext;
 }
-
 var fs = require("fs");
 var ts = require("typescript");
 var args = parseArgs(process.argv);
@@ -193,10 +192,6 @@ function compile(sourceMaps, sbtOptions, target) {
         }
         unparsedCompilerOptions.rootDir = sbtOptions.assetsDir;
         return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json");
-    }
-    function determineTargetAssetsDir(options) {
-        var assetsRelDir = options.assetsDir.substring(options.tsconfigDir.length, options.assetsDir.length);
-        return path.join(target, assetsRelDir);
     }
     function isCodeFile(f) {
         return !(isDeclarationFile(f));
