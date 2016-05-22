@@ -60,6 +60,12 @@ object SbtTypescript extends AutoPlugin with JsonProtocol with JsTask {
 
   import autoImport._
 
+  override def buildSettings = inTask(typescript)(
+    SbtJsTask.jsTaskSpecificUnscopedBuildSettings ++ Seq(
+      moduleName := "typescript",
+      shellFile := getClass.getClassLoader.getResource("typescript.js")
+    )
+  )
 
   override def projectSettings = Seq(
     tsCodesToIgnore := List.empty[Int],
@@ -75,13 +81,10 @@ object SbtTypescript extends AutoPlugin with JsonProtocol with JsTask {
     getCompileMode := getCompileModeTask.value,
     outFile := "main.js"
   ) ++ inTask(typescript)(
-    SbtJsTask.jsTaskSpecificUnscopedSettings ++
+    SbtJsTask.jsTaskSpecificUnscopedProjectSettings ++
       inConfig(Assets)(typescriptUnscopedSettings(Assets)) ++
       inConfig(TestAssets)(typescriptUnscopedSettings(TestAssets)) ++
       Seq(
-        moduleName := "typescript",
-        shellFile := getClass.getClassLoader.getResource("typescript.js"),
-
         taskMessage in Assets := "Typescript compiling",
         taskMessage in TestAssets := "Typescript test compiling"
       )
