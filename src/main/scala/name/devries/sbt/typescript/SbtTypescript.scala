@@ -52,6 +52,9 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     val outFile = SettingKey[String]("typescript-out-file", "the name of the outfile that the stage pipe will produce. Default 'main.js' ")
 
     val compileMode = SettingKey[CompileMode]("typescript-compile-mode","the compile mode to use if no jvm argument is provided. Default 'Compile'")
+
+    val setupTscCompilation = TaskKey[Unit]("setup-tsc-compilation", "Setup tsc compilation. For example to get your IDE to compilate typescript.")
+
   }
 
   val getTsConfig = TaskKey[JsObject]("get-tsconfig", "parses the tsconfig.json file")
@@ -77,7 +80,8 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     JsEngineKeys.parallelism := 1,
     compileMode := CompileMode.Compile,
     getCompileMode := getCompileModeTask.value,
-    outFile := "main.js"
+    outFile := "main.js",
+    setupTscCompilation:=setupTsCompilationTask().value
   ) ++ inTask(typescript)(
     SbtJsTask.jsTaskSpecificUnscopedProjectSettings ++
       inConfig(Assets)(typescriptUnscopedSettings(Assets)) ++
@@ -122,6 +126,28 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     )
   }
 
+  def setupTsCompilationTask() = Def.task{
+    def copyPairs(baseDir:File,modules:Seq[File]):Seq[(File,File)] = {
+      modules
+        .flatMap(f => IO.relativizeFile(baseDir,f).map(rf => Seq((f,rf))).getOrElse(Seq.empty))
+        .map{ case (f,rf) =>  (f,baseDirectory.value / "node_modules" / rf.getPath)}
+    }
+
+    val assetCopyPairs = copyPairs(
+      (webJarsNodeModulesDirectory in Assets).value,
+      (webJarsNodeModules in Assets).value
+    )
+
+    val testAssetCopyPairs= copyPairs(
+      (webJarsNodeModulesDirectory in TestAssets).value,
+      (webJarsNodeModules in TestAssets).value
+    )
+
+    IO.copy(assetCopyPairs++testAssetCopyPairs)
+    streams.value.log.info(s"Webjars copied to ./node_modules")
+    ()
+  }
+
   def parseTsConfig() = Def.task {
 
     def removeComments(string: String) = {
@@ -144,7 +170,6 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       co = coJsValue.asJsObject
       newCo = JsObject(co.fields - "outDir" ++ Map("outFile"->JsString(outFile.value)))
     }yield  JsObject(tsConfigObject.fields ++ Map("compilerOptions"-> newCo))
-    streams.value.log.info(s"tsconfig is $newTsConfigObject")
       newTsConfigObject.getOrElse(tsConfigObject)
   }
 
