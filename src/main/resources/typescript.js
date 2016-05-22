@@ -149,7 +149,6 @@ compileDone(compileResult);
 function compile(sourceMaps, sbtOptions, target) {
     var problems = [];
     var results = [];
-    var targetDir = determineTargetAssetsDir(sbtOptions);
     var _a = toCompilerOptions(sbtOptions), compilerOptions = _a.options, errors = _a.errors;
     if (errors.length > 0) {
         problems.push.apply(problems, toProblems(errors, sbtOptions.tsCodesToIgnore));
@@ -173,7 +172,7 @@ function compile(sourceMaps, sbtOptions, target) {
             var declarationFiles = program.getSourceFiles().filter(isDeclarationFile);
             logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.");
         }
-        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions, targetDir)));
+        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions)));
     }
     logger.debug("files written", results.map(function (r) { return r.result.filesWritten; }));
     var output = {
@@ -184,11 +183,11 @@ function compile(sourceMaps, sbtOptions, target) {
     function toCompilerOptions(sbtOptions) {
         var unparsedCompilerOptions = sbtOptions.tsconfig["compilerOptions"];
         if (unparsedCompilerOptions.outFile) {
-            var outFile = path.join(targetDir, path.basename(unparsedCompilerOptions.outFile));
+            var outFile = path.join(target, path.basename(unparsedCompilerOptions.outFile));
             logger.debug("single outFile ", outFile);
             unparsedCompilerOptions.outFile = outFile;
         }
-        unparsedCompilerOptions.rootDir = sbtOptions.tsconfigDir;
+        unparsedCompilerOptions.rootDir = sbtOptions.assetsDir;
         return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json");
     }
     function determineTargetAssetsDir(options) {
@@ -211,14 +210,14 @@ function compile(sourceMaps, sbtOptions, target) {
         return result;
     }
 }
-function toCompilationResult(sourceMappings, compilerOptions, targetDir) {
+function toCompilationResult(sourceMappings, compilerOptions) {
     return function (sourceFile) {
         return sourceMappings.find(sourceFile.fileName).map(function (sm) {
             var deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(function (f) { return f.fileName; }));
-            var outputFile = determineOutFile(sm.toOutputPath(targetDir, ".js"), compilerOptions, targetDir);
+            var outputFile = determineOutFile(sm.toOutputPath(compilerOptions.outDir, ".js"), compilerOptions);
             var filesWritten = [outputFile];
             if (compilerOptions.declaration) {
-                var outputFileDeclaration = sm.toOutputPath(targetDir, ".d.ts");
+                var outputFileDeclaration = sm.toOutputPath(compilerOptions.outDir, ".d.ts");
                 filesWritten.push(outputFileDeclaration);
             }
             if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
@@ -234,7 +233,7 @@ function toCompilationResult(sourceMappings, compilerOptions, targetDir) {
                 }
             };
             return result;
-            function determineOutFile(outFile, options, targetDir) {
+            function determineOutFile(outFile, options) {
                 if (options.outFile) {
                     logger.debug("single outFile ", options.outFile);
                     return options.outFile;

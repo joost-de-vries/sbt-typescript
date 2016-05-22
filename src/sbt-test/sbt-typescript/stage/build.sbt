@@ -10,7 +10,7 @@ JsEngineKeys.engineType := JsEngineKeys.EngineType.Node
 
 logLevel in typescript := Level.Debug
 
-val expected = Set("main.js", "main.js.map",
+val expected = Set("javascripts/main.js", "javascripts/main.js.map",
   "javascripts") map(_.replace("/", java.io.File.separator))
 
 val checkMappings = taskKey[Unit]("check the pipeline mappings")

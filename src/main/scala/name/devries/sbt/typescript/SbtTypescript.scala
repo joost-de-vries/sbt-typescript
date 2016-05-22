@@ -55,7 +55,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol with JsTask {
   }
 
   val getTsConfig = TaskKey[JsObject]("get-tsconfig", "parses the tsconfig.json file")
-  val typescriptWrapperTask = TaskKey[Seq[File]]("typescript-wrapper-task", "Wraps the typescript task to do post processing.")
+//  val typescriptWrapperTask = TaskKey[Seq[File]]("typescript-wrapper-task", "Wraps the typescript task to do post processing.")
   val getCompileMode = TaskKey[CompileMode]("get-compile-mode", "determines required compile mode")
 
   import autoImport._
@@ -73,8 +73,8 @@ object SbtTypescript extends AutoPlugin with JsonProtocol with JsTask {
     typingsFile := None,
     resolveFromWebjarsNodeModulesDir := false,
     logLevel in typescript := Level.Info,
-    typescriptWrapperTask in Assets := moveFilesTask(Assets).value,
-    typescriptWrapperTask in TestAssets := moveFilesTask(TestAssets).value,
+//    typescriptWrapperTask in Assets := moveFilesTask(Assets).value,
+//    typescriptWrapperTask in TestAssets := moveFilesTask(TestAssets).value,
     typescriptPipe := typescriptPipeTask.value,
     JsEngineKeys.parallelism := 1,
     compileMode := CompileMode.Compile,
@@ -125,7 +125,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol with JsTask {
   }
 
   def moveFilesTask(config: Configuration) = Def.task {
-    streams.value.log.info(s"typescript runmode is ${getCompileMode.value}")
+    streams.value.log.debug(s"typescript compilation mode is ${getCompileMode.value}")
 
     val compiledFiles = (typescript in config).value
     //    streams.value.log.info("received files"+compiledFiles)

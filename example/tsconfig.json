@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
-    "module":"commonjs",
+    "module":"system",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "noImplicitAny":true
+    "noImplicitAny":true,
+    "sourceMap": true
   }
 }

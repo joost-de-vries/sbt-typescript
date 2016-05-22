@@ -37,8 +37,6 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
     const problems:Problem[] = []
     let results:CompilationFileResult[] = []
 
-    const targetDir = determineTargetAssetsDir(sbtOptions)
-    
     const {options: compilerOptions, errors} = toCompilerOptions(sbtOptions)
 
     if (errors.length > 0) {
@@ -68,7 +66,7 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
             logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.")
         }
 
-        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions, targetDir)))
+        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions)))
     }
 
     logger.debug("files written", results.map((r)=> r.result.filesWritten))
@@ -83,18 +81,13 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
         const unparsedCompilerOptions:any = sbtOptions.tsconfig["compilerOptions"]
         // logger.debug("compilerOptions ", unparsedCompilerOptions)
         if (unparsedCompilerOptions.outFile) {
-            const outFile = path.join(targetDir, path.basename(unparsedCompilerOptions.outFile))
+            const outFile = path.join(target, path.basename(unparsedCompilerOptions.outFile))
             logger.debug("single outFile ", outFile)
             unparsedCompilerOptions.outFile = outFile
         }
-        unparsedCompilerOptions.rootDir = sbtOptions.tsconfigDir
+        unparsedCompilerOptions.rootDir = sbtOptions.assetsDir
         return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json")
 
-    }
-
-    function determineTargetAssetsDir(options:SbtTypescriptOptions) {
-        const assetsRelDir = options.assetsDir.substring(options.tsconfigDir.length, options.assetsDir.length)
-        return path.join(target, assetsRelDir)
     }
 
     function isCodeFile(f:SourceFile) {
@@ -115,18 +108,18 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
     }
 }
 
-function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:CompilerOptions, targetDir:string):(sf:SourceFile)=> Option<CompilationFileResult> {
+function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:CompilerOptions):(sf:SourceFile)=> Option<CompilationFileResult> {
     return sourceFile => {
         return sourceMappings.find(sourceFile.fileName).map((sm)=> {
             // logger.debug("source file is ",sourceFile.fileName)
             let deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(f => f.fileName))
 
-            let outputFile = determineOutFile(sm.toOutputPath(targetDir, ".js"), compilerOptions, targetDir)
+            let outputFile = determineOutFile(sm.toOutputPath(compilerOptions.outDir, ".js"), compilerOptions)
 
             let filesWritten = [outputFile]
 
             if (compilerOptions.declaration) {
-                let outputFileDeclaration = sm.toOutputPath(targetDir, ".d.ts")
+                let outputFileDeclaration = sm.toOutputPath(compilerOptions.outDir, ".d.ts")
                 filesWritten.push(outputFileDeclaration)
             }
 
@@ -145,7 +138,7 @@ function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:Comp
             }
             return result
 
-            function determineOutFile(outFile:string, options:CompilerOptions, targetDir:string):string {
+            function determineOutFile(outFile:string, options:CompilerOptions):string {
                 if (options.outFile) {
                     logger.debug("single outFile ", options.outFile)
                     return options.outFile
