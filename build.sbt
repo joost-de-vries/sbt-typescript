@@ -28,7 +28,7 @@ resolvers ++= Seq(
   Resolver.mavenLocal
 )
 
-addSbtPlugin("com.typesafe.sbt" % "sbt-js-engine" % "1.1.3")
+addSbtPlugin("com.typesafe.sbt" % "sbt-js-engine" % "1.1.4")
 
 publishMavenStyle := false
 bintrayRepository in bintray := "sbt-plugins"
