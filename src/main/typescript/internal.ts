@@ -192,7 +192,7 @@ interface SbtTypescriptOptions {
     logLevel:string,
     tsconfig:any,
     tsconfigDir:string,
-    assetsDir:string,
+    assetsDirs:string[],
     tsCodesToIgnore:number[],
     extraFiles:string[],
     nodeModulesDir:string,

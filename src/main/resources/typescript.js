@@ -140,7 +140,7 @@ var sbtTypescriptOpts = args.options;
 var logger = new Logger(sbtTypescriptOpts.logLevel);
 var sourceMappings = new SourceMappings(args.sourceFileMappings);
 logger.debug("starting compilation of ", sourceMappings.mappings.map(function (sm) { return sm.relativePath; }));
-logger.debug("from ", sbtTypescriptOpts.assetsDir);
+logger.debug("from ", sbtTypescriptOpts.assetsDirs);
 logger.debug("to ", args.target);
 logger.debug("args ", args);
 var compileResult = compile(sourceMappings, sbtTypescriptOpts, args.target);
@@ -190,7 +190,7 @@ function compile(sourceMaps, sbtOptions, target) {
             logger.debug("single outFile ", outFile);
             unparsedCompilerOptions.outFile = outFile;
         }
-        unparsedCompilerOptions.rootDir = sbtOptions.assetsDir;
+        unparsedCompilerOptions.rootDirs = sbtOptions.assetsDirs;
         return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json");
     }
     function isCodeFile(f) {
@@ -221,7 +221,6 @@ function toCompilationResult(sourceMappings, compilerOptions) {
             }
             if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
                 var outputFileMap = outputFile + ".map";
-                fixSourceMapFile(outputFileMap);
                 filesWritten.push(outputFileMap);
             }
             var result = {
@@ -240,11 +239,6 @@ function toCompilationResult(sourceMappings, compilerOptions) {
                 else {
                     return outFile;
                 }
-            }
-            function fixSourceMapFile(file) {
-                var sourceMap = JSON.parse(fs.readFileSync(file, "utf-8"));
-                sourceMap.sources = sourceMap.sources.map(function (source) { return path.basename(source); });
-                fs.writeFileSync(file, JSON.stringify(sourceMap), "utf-8");
             }
         });
     };

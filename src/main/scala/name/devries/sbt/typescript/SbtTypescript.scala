@@ -105,6 +105,17 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       }
     }
 
+    def assetsDirs(assetDir:String, testassetDir:String)={
+      if(config==Assets){
+        JsArray(JsString(assetDir))
+      }else if(config==TestAssets){
+        JsArray(JsString(assetDir),
+          JsString(testassetDir))
+      }else{
+        throw new IllegalStateException
+      }
+    }
+
     Seq(
       includeFilter := GlobFilter("*.ts") | GlobFilter("*.tsx"),
       excludeFilter := GlobFilter("*.d.ts"),
@@ -112,7 +123,10 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
         "logLevel" -> JsString(logLevel.value.toString),
         "tsconfig" -> parseTsConfig().value,
         "tsconfigDir" -> JsString(projectFile.value.getParent),
-        "assetsDir" -> JsString((sourceDirectory in config).value.getAbsolutePath),
+        "assetsDirs" -> assetsDirs(
+          assetDir= (sourceDirectory in Assets).value.getAbsolutePath,
+          testassetDir = (sourceDirectory in TestAssets).value.getAbsolutePath
+        ),
         "tsCodesToIgnore" -> JsArray(tsCodesToIgnore.value.toVector.map(JsNumber(_))),
         "nodeModulesDir" -> JsString(webJarsNodeModulesDirectory.value.getAbsolutePath),
         "resolveFromNodeModulesDir" -> JsBoolean(resolveFromWebjarsNodeModulesDir.value),

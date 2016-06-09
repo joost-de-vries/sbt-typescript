@@ -20,7 +20,7 @@ const logger = new Logger(sbtTypescriptOpts.logLevel)
 const sourceMappings = new SourceMappings(args.sourceFileMappings)
 
 logger.debug("starting compilation of ", sourceMappings.mappings.map((sm)=> sm.relativePath))
-logger.debug("from ", sbtTypescriptOpts.assetsDir)
+logger.debug("from ", sbtTypescriptOpts.assetsDirs)
 logger.debug("to ", args.target)
 logger.debug("args ", args)
 
@@ -86,7 +86,7 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
             logger.debug("single outFile ", outFile)
             unparsedCompilerOptions.outFile = outFile
         }
-        unparsedCompilerOptions.rootDir = sbtOptions.assetsDir
+        unparsedCompilerOptions.rootDirs = sbtOptions.assetsDirs
         return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json")
 
     }
@@ -126,7 +126,6 @@ function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:Comp
 
             if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
                 let outputFileMap = outputFile + ".map"
-                fixSourceMapFile(outputFileMap)
                 filesWritten.push(outputFileMap)
             }
 
@@ -146,12 +145,6 @@ function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:Comp
                 } else {
                     return outFile
                 }
-            }
-
-            function fixSourceMapFile(file:string) {
-                let sourceMap = JSON.parse(fs.readFileSync(file, "utf-8"))
-                sourceMap.sources = sourceMap.sources.map((source:string)=> path.basename(source))
-                fs.writeFileSync(file, JSON.stringify(sourceMap), "utf-8")
             }
         })
     }
