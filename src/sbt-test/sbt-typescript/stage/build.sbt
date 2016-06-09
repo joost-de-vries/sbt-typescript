@@ -4,7 +4,7 @@
 
 lazy val root = (project in file(".")).enablePlugins(SbtWeb)
 
-pipelineStages := Seq(typescriptStage)
+pipelineStages := Seq(typescriptPipe)
 
 JsEngineKeys.engineType := JsEngineKeys.EngineType.Node
 

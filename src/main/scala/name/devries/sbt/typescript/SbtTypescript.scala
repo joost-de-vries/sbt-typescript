@@ -48,7 +48,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
 
     val resolveFromWebjarsNodeModulesDir = SettingKey[Boolean]("typescript-resolve-modules-from-etc", "Will use the directory to resolve modules ")
 
-    val typescriptPipe = Def.taskKey[Pipeline.Stage]("typescript-stage")
+    val typescriptPipe = Def.taskKey[Pipeline.Stage]("typescript-pipe")
     val outFile = SettingKey[String]("typescript-out-file", "the name of the outfile that the stage pipe will produce. Default 'main.js' ")
 
     val compileMode = SettingKey[CompileMode]("typescript-compile-mode","the compile mode to use if no jvm argument is provided. Default 'Compile'")
