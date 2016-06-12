@@ -4,14 +4,6 @@
     "module": "system",
     "emitDecoratorMetadata": true,
     "experimentalDecorators":true,
-    "rootDirs": ["app/assets","test/assets"],
-    "baseUrl": ".",
-    "paths": {
-      "*": [
-        "*",
-        "target/web/node-modules/main/webjars/*"
-      ]
-    },
     "outDir": "./target/ts"
   }
 }
