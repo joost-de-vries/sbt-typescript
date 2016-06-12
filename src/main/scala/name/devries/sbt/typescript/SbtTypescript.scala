@@ -165,8 +165,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
   def parseTsConfig() = Def.task {
 
     def removeComments(string: String) = {
-      // cribbed from http://blog.ostermiller.org/find-comment
-      string.replaceAll("""/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/""", "")
+      JsonCleaner.minify(string)
     }
 
     def parseJson(tsConfigFile: File): JsValue = {
