@@ -7,10 +7,14 @@ import {
     SourceFile,
     CompilerOptions,
     DiagnosticCategory,
+    convertCompilerOptionsFromJson,
+    createProgram,
+    createCompilerHost,
+    getPreEmitDiagnostics,
+    flattenDiagnosticMessageText,
+    sys
 } from "typescript"
 
-//const fs = require("fs")
-const ts = require("typescript")
 const fs = require("fs-extra")
 
 const args:Args = parseArgs(process.argv)
@@ -53,37 +57,37 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
             "*": ["*"].concat(nodeModulesPaths).concat(assetPaths)
         }
         logger.debug("using tsc options ", compilerOptions)
-        const compilerHost = ts.createCompilerHost(compilerOptions)
+        const compilerHost = createCompilerHost(compilerOptions)
 
         let filesToCompile = sourceMaps.asAbsolutePaths()
         if (sbtTypescriptOpts.extraFiles) filesToCompile = filesToCompile.concat(sbtTypescriptOpts.extraFiles)
 
-        logger.debug("files to compile ",filesToCompile)
-        const program:Program = ts.createProgram(filesToCompile, compilerOptions, compilerHost)
+        logger.debug("files to compile ", filesToCompile)
+        const program:Program = createProgram(filesToCompile, compilerOptions, compilerHost)
         logger.debug("created program")
         problems.push(...findPreemitProblems(program, sbtOptions.tsCodesToIgnore))
 
         const emitOutput = program.emit()
-        
-        if(sbtTypescriptOpts.assetsDirs.length===2){
+
+        if (sbtTypescriptOpts.assetsDirs.length === 2) {
             // we're compiling testassets
-            // because we have two rootdirs the paths are not being relativized to outDir
+            // unfortunately because we have two rootdirs the paths are not being relativized to outDir
             // see https://github.com/Microsoft/TypeScript/issues/7837
             // so we get
             // ...<outdir>/main/assets/<code> and
             // ...<outdir>/test/assets/<code> because they have ./src in common
             // we need to find out what their relative paths are wrt the path they have in common
-            const common = commonPath(sbtTypescriptOpts.assetsDirs[0],sbtTypescriptOpts.assetsDirs[1])
+            const common = commonPath(sbtTypescriptOpts.assetsDirs[0], sbtTypescriptOpts.assetsDirs[1])
             const relPathAssets = sbtTypescriptOpts.assetsDirs[0].substring(common.length)
             const relPathTestAssets = sbtTypescriptOpts.assetsDirs[1].substring(common.length)
 
             // and move the desired emitted test files up to the target path
             // logger.debug("will remove",target+"/"+relPathAssets)
             // logger.debug("will move contents of "+ target+"/"+relPathTestAssets+" to "+target)
-            fs.remove(target+"/"+relPathAssets,(e:any) => logger.debug("removed",target+"/"+relPathAssets))
-            fs.copy(target+"/"+relPathTestAssets,target, (e:any) => {
-                logger.debug("moved contents of "+ target+"/"+relPathTestAssets+" to "+target)
-                fs.remove(target+"/"+relPathTestAssets,(e:any)=> true)
+            fs.remove(target + "/" + relPathAssets, (e:any) => logger.debug("removed", target + "/" + relPathAssets))
+            fs.copy(target + "/" + relPathTestAssets, target, (e:any) => {
+                logger.debug("moved contents of " + target + "/" + relPathTestAssets + " to " + target)
+                fs.remove(target + "/" + relPathTestAssets, (e:any)=> true)
             })
 
 
@@ -100,10 +104,10 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
 
         const ffw = flatFilesWritten(results)
         logger.debug("files written", ffw)
-        logger.debug("files emitted",emitOutput.emittedFiles)
+        logger.debug("files emitted", emitOutput.emittedFiles)
 
         const emittedButNotDeclared = emitOutput.emittedFiles.filter(ef => true)
-        const declaredButNotEmitted = ffw.filter((fw,x,y) => emitOutput.emittedFiles.indexOf(fw) === -1)
+        const declaredButNotEmitted = ffw.filter((fw, x, y) => emitOutput.emittedFiles.indexOf(fw) === -1)
 
         if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
             logger.error("emitted and declared files are not equal")
@@ -118,12 +122,12 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
     }
     return output
 
-    function commonPath(path1:string,path2:string){
-        let commonPath=""
-        for(let i=0;i<path1.length;i++){
-            if(path1.charAt(i)===path2.charAt(i)){
-                commonPath+=path1.charAt(i)
-            }else{
+    function commonPath(path1:string, path2:string) {
+        let commonPath = ""
+        for (let i = 0; i < path1.length; i++) {
+            if (path1.charAt(i) === path2.charAt(i)) {
+                commonPath += path1.charAt(i)
+            } else {
                 return commonPath
             }
         }
@@ -140,7 +144,7 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
         }
         unparsedCompilerOptions.rootDirs = sbtOptions.assetsDirs
         unparsedCompilerOptions.listEmittedFiles = true
-        return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json")
+        return convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json")
 
     }
 
@@ -210,7 +214,7 @@ function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:Comp
 }
 
 function findPreemitProblems(program:Program, tsIgnoreList?:number[]):Problem[] {
-    let diagnostics = ts.getPreEmitDiagnostics(program)
+    let diagnostics = getPreEmitDiagnostics(program)
 
     if (tsIgnoreList) return diagnostics.filter(ignoreDiagnostic(tsIgnoreList)).map(parseDiagnostic)
     else return diagnostics.map(parseDiagnostic)
@@ -241,7 +245,7 @@ function parseDiagnostic(d:Diagnostic):Problem {
     let problem = <Problem>{
         lineNumber: lineCol.line,
         characterOffset: lineCol.character,
-        message: "TS" + d.code + " " + ts.flattenDiagnosticMessageText(d.messageText, ts.sys.newLine),
+        message: "TS" + d.code + " " + flattenDiagnosticMessageText(d.messageText, sys.newLine),
         source: fileName,
         severity: toSeverity(d.category),
         lineContent: lineText

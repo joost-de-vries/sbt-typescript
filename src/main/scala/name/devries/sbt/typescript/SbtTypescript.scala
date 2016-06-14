@@ -13,8 +13,8 @@ import com.typesafe.sbt.web.Import.WebKeys._
 import com.typesafe.sbt.web.SbtWeb.autoImport._
 
 /** typescript compilation can run during 'sbt assets' compilation or during Play 'sbt stage' as a sbt-web pipe */
-sealed class CompileMode(val value:String){
-  override def toString=value
+sealed class CompileMode(val value: String) {
+  override def toString = value
 }
 
 object CompileMode {
@@ -22,7 +22,8 @@ object CompileMode {
   case object Compile extends CompileMode("compile")
 
   case object Stage extends CompileMode("stage")
-  val values:Set[CompileMode] = Set(Compile,Stage)
+
+  val values: Set[CompileMode] = Set(Compile, Stage)
   val parse = values.map(v => v.value -> v).toMap
 }
 
@@ -51,7 +52,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     val typescriptPipe = Def.taskKey[Pipeline.Stage]("typescript-pipe")
     val outFile = SettingKey[String]("typescript-out-file", "the name of the outfile that the stage pipe will produce. Default 'main.js' ")
 
-    val compileMode = SettingKey[CompileMode]("typescript-compile-mode","the compile mode to use if no jvm argument is provided. Default 'Compile'")
+    val compileMode = SettingKey[CompileMode]("typescript-compile-mode", "the compile mode to use if no jvm argument is provided. Default 'Compile'")
 
     val setupTscCompilation = TaskKey[Unit]("setup-tsc-compilation", "Setup tsc compilation. For example to get your IDE to compilate typescript.")
 
@@ -81,7 +82,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     compileMode := CompileMode.Compile,
     getCompileMode := getCompileModeTask.value,
     outFile := "main.js",
-    setupTscCompilation:=setupTsCompilationTask().value
+    setupTscCompilation := setupTsCompilationTask().value
   ) ++ inTask(typescript)(
     SbtJsTask.jsTaskSpecificUnscopedProjectSettings ++
       inConfig(Assets)(typescriptUnscopedSettings(Assets)) ++
@@ -105,12 +106,12 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       }
     }
 
-    def toJsArray(mainDir:String, testDir:String)={
-      if(config==Assets){
+    def toJsArray(mainDir: String, testDir: String) = {
+      if (config == Assets) {
         JsArray(JsString(mainDir))
-      }else if(config==TestAssets){
+      } else if (config == TestAssets) {
         JsArray(JsString(mainDir), JsString(testDir))
-      }else{
+      } else {
         throw new IllegalStateException
       }
     }
@@ -123,32 +124,31 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
         "tsconfig" -> parseTsConfig().value,
         "tsconfigDir" -> JsString(projectFile.value.getParent),
         "assetsDirs" -> toJsArray(
-          mainDir= (sourceDirectory in Assets).value.getAbsolutePath,
+          mainDir = (sourceDirectory in Assets).value.getAbsolutePath,
           testDir = (sourceDirectory in TestAssets).value.getAbsolutePath
         ),
         "tsCodesToIgnore" -> JsArray(tsCodesToIgnore.value.toVector.map(JsNumber(_))),
-        "nodeModulesDirs" -> toJsArray((webJarsNodeModulesDirectory in Assets).value.getAbsolutePath,
-          (webJarsNodeModulesDirectory in TestAssets).value.getAbsolutePath),
+        "nodeModulesDirs" -> toJsArray(
+          mainDir = (webJarsNodeModulesDirectory in Assets).value.getAbsolutePath,
+          testDir = (webJarsNodeModulesDirectory in TestAssets).value.getAbsolutePath),
         "resolveFromNodeModulesDir" -> JsBoolean(resolveFromWebjarsNodeModulesDir.value),
         "runMode" -> JsString(getCompileMode.value.toString)
       ) ++ optionalFields(Map(
         "extraFiles" -> typingsFile.value.map(tf => JsArray(JsString(tf.getCanonicalPath))),
-        "stageOutFile" -> {if (getCompileMode.value == CompileMode.Stage) Some(JsString(outFile.value)) else None }
+        "stageOutFile" -> {
+          if (getCompileMode.value == CompileMode.Stage) Some(JsString(outFile.value)) else None
+        }
       )
       )
       ).toString()
     )
   }
 
-  def getRelativeAssetDir(config:Configuration)=Def.setting{
-    IO.relativize(sourceDirectory.value.getAbsoluteFile,(sourceDirectory in config).value.getAbsoluteFile).getOrElse(throw new IllegalStateException())
-  }
-
-  def setupTsCompilationTask() = Def.task{
-    def copyPairs(baseDir:File,modules:Seq[File]):Seq[(File,File)] = {
+  def setupTsCompilationTask() = Def.task {
+    def copyPairs(baseDir: File, modules: Seq[File]): Seq[(File, File)] = {
       modules
-        .flatMap(f => IO.relativizeFile(baseDir,f).map(rf => Seq((f,rf))).getOrElse(Seq.empty))
-        .map{ case (f,rf) =>  (f,baseDirectory.value / "node_modules" / rf.getPath)}
+        .flatMap(f => IO.relativizeFile(baseDir, f).map(rf => Seq((f, rf))).getOrElse(Seq.empty))
+        .map { case (f, rf) => (f, baseDirectory.value / "node_modules" / rf.getPath) }
     }
 
     val assetCopyPairs = copyPairs(
@@ -156,12 +156,12 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       (webJarsNodeModules in Assets).value
     )
 
-    val testAssetCopyPairs= copyPairs(
+    val testAssetCopyPairs = copyPairs(
       (webJarsNodeModulesDirectory in TestAssets).value,
       (webJarsNodeModules in TestAssets).value
     )
 
-    IO.copy(assetCopyPairs++testAssetCopyPairs)
+    IO.copy(assetCopyPairs ++ testAssetCopyPairs)
     streams.value.log.info(s"Webjars copied to ./node_modules")
     ()
   }
@@ -180,21 +180,21 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
 
     val tsConfigFile = projectFile.value
 
-    val tsConfigObject =parseJson(tsConfigFile).asJsObject
-    val newTsConfigObject = for{
+    val tsConfigObject = parseJson(tsConfigFile).asJsObject
+    val newTsConfigObject = for {
       coJsValue <- tsConfigObject.fields.get("compilerOptions") if getCompileMode.value == CompileMode.Stage
 
       co = coJsValue.asJsObject
-      newCo = JsObject(co.fields - "outDir" ++ Map("outFile"->JsString(outFile.value)))
-    }yield  JsObject(tsConfigObject.fields ++ Map("compilerOptions"-> newCo))
-      newTsConfigObject.getOrElse(tsConfigObject)
+      newCo = JsObject(co.fields - "outDir" ++ Map("outFile" -> JsString(outFile.value)))
+    } yield JsObject(tsConfigObject.fields ++ Map("compilerOptions" -> newCo))
+    newTsConfigObject.getOrElse(tsConfigObject)
   }
 
-  def getCompileModeTask = Def.task{
-    val modeOpt=for {
+  def getCompileModeTask = Def.task {
+    val modeOpt = for {
       s <- sys.props.get("tsCompileMode")
       cm <- CompileMode.parse.get(s)
-    }yield cm
+    } yield cm
 
     modeOpt.getOrElse(compileMode.value)
   }
@@ -202,7 +202,9 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
   def typescriptPipeTask: Def.Initialize[Task[Pipeline.Stage]] = Def.task {
     inputMappings =>
 
-      val isTypescript:PathMapping => Boolean ={case (file,path)=> (includeFilter in typescript in Assets).value.accept(file)}
+      val isTypescript: PathMapping => Boolean = {
+        case (file, path) => (includeFilter in typescript in Assets).value.accept(file)
+      }
       val minustypescriptMappings = inputMappings.filterNot(isTypescript)
       streams.value.log.debug(s"running typescript pipe")
 
