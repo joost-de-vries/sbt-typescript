@@ -104,10 +104,10 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
 
         const ffw = flatFilesWritten(results)
         logger.debug("files written", ffw)
-        logger.debug("files emitted", emitOutput.emittedFiles)
+        //logger.debug("files emitted", emitOutput.emittedFiles)
 
-        const emittedButNotDeclared = emitOutput.emittedFiles.filter(ef => true)
-        const declaredButNotEmitted = ffw.filter((fw, x, y) => emitOutput.emittedFiles.indexOf(fw) === -1)
+        const emittedButNotDeclared = minus(emitOutput.emittedFiles,ffw)
+        const declaredButNotEmitted = minus(ffw,emitOutput.emittedFiles)
 
         if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
             logger.error("emitted and declared files are not equal")
@@ -121,6 +121,16 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
         problems: problems
     }
     return output
+
+    function minus(arr1:string[],arr2:string[]):string[]{
+        const r:string[]=[]
+        for(const s of arr1){
+          if(arr2.indexOf(s)> -1){
+              r.push(s)
+          }
+        }
+        return r
+    }
 
     function commonPath(path1:string, path2:string) {
         let commonPath = ""
