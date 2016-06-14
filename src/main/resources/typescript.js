@@ -84,6 +84,12 @@ var SourceMappings = (function () {
         }
         return this.absolutePaths;
     };
+    SourceMappings.prototype.asRelativePaths = function () {
+        if (!this.relativePaths) {
+            this.relativePaths = this.mappings.map(function (sm) { return sm.relativePath; });
+        }
+        return this.relativePaths;
+    };
     SourceMappings.prototype.find = function (sourceFileName) {
         var absPath = path.normalize(sourceFileName);
         var index = this.asAbsolutePaths().indexOf(absPath);
@@ -133,8 +139,8 @@ function replaceFileExtension(file, ext) {
     var oldExt = path.extname(file);
     return file.substring(0, file.length - oldExt.length) + ext;
 }
-var fs = require("fs");
 var ts = require("typescript");
+var fs = require("fs-extra");
 var args = parseArgs(process.argv);
 var sbtTypescriptOpts = args.options;
 var logger = new Logger(sbtTypescriptOpts.logLevel);
@@ -154,35 +160,69 @@ function compile(sourceMaps, sbtOptions, target) {
     }
     else {
         compilerOptions.outDir = target;
+        var nodeModulesPaths = [];
         if (sbtTypescriptOpts.resolveFromNodeModulesDir) {
-            compilerOptions.baseUrl = ".";
-            var paths = {
-                "*": ["*", sbtTypescriptOpts.nodeModulesDir + "/*"]
-            };
-            compilerOptions.paths = paths;
+            nodeModulesPaths = sbtTypescriptOpts.nodeModulesDirs.map(function (p) { return p + "/*"; });
         }
+        var assetPaths = sbtTypescriptOpts.assetsDirs.map(function (p) { return p + "/*"; });
+        compilerOptions.baseUrl = ".";
+        compilerOptions.paths = {
+            "*": ["*"].concat(nodeModulesPaths).concat(assetPaths)
+        };
         logger.debug("using tsc options ", compilerOptions);
         var compilerHost = ts.createCompilerHost(compilerOptions);
         var filesToCompile = sourceMaps.asAbsolutePaths();
         if (sbtTypescriptOpts.extraFiles)
             filesToCompile = filesToCompile.concat(sbtTypescriptOpts.extraFiles);
+        logger.debug("files to compile ", filesToCompile);
         var program = ts.createProgram(filesToCompile, compilerOptions, compilerHost);
         logger.debug("created program");
         problems.push.apply(problems, findPreemitProblems(program, sbtOptions.tsCodesToIgnore));
-        var emitOutput = program.emit();
-        problems.push.apply(problems, toProblems(emitOutput.diagnostics, sbtOptions.tsCodesToIgnore));
+        var emitOutput_1 = program.emit();
+        if (sbtTypescriptOpts.assetsDirs.length === 2) {
+            var common = commonPath(sbtTypescriptOpts.assetsDirs[0], sbtTypescriptOpts.assetsDirs[1]);
+            var relPathAssets_1 = sbtTypescriptOpts.assetsDirs[0].substring(common.length);
+            var relPathTestAssets_1 = sbtTypescriptOpts.assetsDirs[1].substring(common.length);
+            fs.remove(target + "/" + relPathAssets_1, function (e) { return logger.debug("removed", target + "/" + relPathAssets_1); });
+            fs.copy(target + "/" + relPathTestAssets_1, target, function (e) {
+                logger.debug("moved contents of " + target + "/" + relPathTestAssets_1 + " to " + target);
+                fs.remove(target + "/" + relPathTestAssets_1, function (e) { return true; });
+            });
+        }
+        problems.push.apply(problems, toProblems(emitOutput_1.diagnostics, sbtOptions.tsCodesToIgnore));
         if (logger.isDebug) {
             var declarationFiles = program.getSourceFiles().filter(isDeclarationFile);
             logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.");
         }
         results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions)));
+        var ffw = flatFilesWritten(results);
+        logger.debug("files written", ffw);
+        logger.debug("files emitted", emitOutput_1.emittedFiles);
+        var emittedButNotDeclared = emitOutput_1.emittedFiles.filter(function (ef) { return true; });
+        var declaredButNotEmitted = ffw.filter(function (fw, x, y) { return emitOutput_1.emittedFiles.indexOf(fw) === -1; });
+        if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
+            logger.error("emitted and declared files are not equal");
+            logger.error("emitted but not declared", emittedButNotDeclared);
+            logger.error("declared but not emitted", declaredButNotEmitted);
+        }
     }
-    logger.debug("files written", results.map(function (r) { return r.result.filesWritten; }));
     var output = {
         results: results,
         problems: problems
     };
     return output;
+    function commonPath(path1, path2) {
+        var commonPath = "";
+        for (var i = 0; i < path1.length; i++) {
+            if (path1.charAt(i) === path2.charAt(i)) {
+                commonPath += path1.charAt(i);
+            }
+            else {
+                return commonPath;
+            }
+        }
+        return commonPath;
+    }
     function toCompilerOptions(sbtOptions) {
         var unparsedCompilerOptions = sbtOptions.tsconfig["compilerOptions"];
         if (unparsedCompilerOptions.outFile) {
@@ -191,7 +231,13 @@ function compile(sourceMaps, sbtOptions, target) {
             unparsedCompilerOptions.outFile = outFile;
         }
         unparsedCompilerOptions.rootDirs = sbtOptions.assetsDirs;
+        unparsedCompilerOptions.listEmittedFiles = true;
         return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json");
+    }
+    function flatFilesWritten(results) {
+        var files = [];
+        results.forEach(function (cfr) { return cfr.result.filesWritten.forEach(function (fw) { return files.push(fw); }); });
+        return files;
     }
     function isCodeFile(f) {
         return !(isDeclarationFile(f));

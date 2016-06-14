@@ -9,8 +9,9 @@ import {
     DiagnosticCategory,
 } from "typescript"
 
-const fs = require("fs")
+//const fs = require("fs")
 const ts = require("typescript")
+const fs = require("fs-extra")
 
 const args:Args = parseArgs(process.argv)
 const sbtTypescriptOpts:SbtTypescriptOptions = args.options
@@ -40,13 +41,16 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
     else {
         compilerOptions.outDir = target
 
+        let nodeModulesPaths:string[] = []
         if (sbtTypescriptOpts.resolveFromNodeModulesDir) {
-            // see https://github.com/Microsoft/TypeScript-Handbook/blob/release-2.0/pages/Module%20Resolution.md#path-mapping
-            compilerOptions.baseUrl="."
-            const paths = {
-                "*": ["*",sbtTypescriptOpts.nodeModulesDir +"/*"]
-            }
-            compilerOptions.paths = paths
+            nodeModulesPaths = sbtTypescriptOpts.nodeModulesDirs.map(p => p + "/*")
+        }
+
+        const assetPaths = sbtTypescriptOpts.assetsDirs.map(p => p + "/*")
+        // see https://github.com/Microsoft/TypeScript-Handbook/blob/release-2.0/pages/Module%20Resolution.md#path-mapping
+        compilerOptions.baseUrl = "."
+        compilerOptions.paths = {
+            "*": ["*"].concat(nodeModulesPaths).concat(assetPaths)
         }
         logger.debug("using tsc options ", compilerOptions)
         const compilerHost = ts.createCompilerHost(compilerOptions)
@@ -54,11 +58,36 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
         let filesToCompile = sourceMaps.asAbsolutePaths()
         if (sbtTypescriptOpts.extraFiles) filesToCompile = filesToCompile.concat(sbtTypescriptOpts.extraFiles)
 
+        logger.debug("files to compile ",filesToCompile)
         const program:Program = ts.createProgram(filesToCompile, compilerOptions, compilerHost)
         logger.debug("created program")
         problems.push(...findPreemitProblems(program, sbtOptions.tsCodesToIgnore))
 
         const emitOutput = program.emit()
+        
+        if(sbtTypescriptOpts.assetsDirs.length===2){
+            // we're compiling testassets
+            // because we have two rootdirs the paths are not being relativized to outDir
+            // see https://github.com/Microsoft/TypeScript/issues/7837
+            // so we get
+            // ...<outdir>/main/assets/<code> and
+            // ...<outdir>/test/assets/<code> because they have ./src in common
+            // we need to find out what their relative paths are wrt the path they have in common
+            const common = commonPath(sbtTypescriptOpts.assetsDirs[0],sbtTypescriptOpts.assetsDirs[1])
+            const relPathAssets = sbtTypescriptOpts.assetsDirs[0].substring(common.length)
+            const relPathTestAssets = sbtTypescriptOpts.assetsDirs[1].substring(common.length)
+
+            // and move the desired emitted test files up to the target path
+            // logger.debug("will remove",target+"/"+relPathAssets)
+            // logger.debug("will move contents of "+ target+"/"+relPathTestAssets+" to "+target)
+            fs.remove(target+"/"+relPathAssets,(e:any) => logger.debug("removed",target+"/"+relPathAssets))
+            fs.copy(target+"/"+relPathTestAssets,target, (e:any) => {
+                logger.debug("moved contents of "+ target+"/"+relPathTestAssets+" to "+target)
+                fs.remove(target+"/"+relPathTestAssets,(e:any)=> true)
+            })
+
+
+        }
 
         problems.push(...toProblems(emitOutput.diagnostics, sbtOptions.tsCodesToIgnore))
 
@@ -68,15 +97,38 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
         }
 
         results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions)))
-    }
 
-    logger.debug("files written", results.map((r)=> r.result.filesWritten))
+        const ffw = flatFilesWritten(results)
+        logger.debug("files written", ffw)
+        logger.debug("files emitted",emitOutput.emittedFiles)
+
+        const emittedButNotDeclared = emitOutput.emittedFiles.filter(ef => true)
+        const declaredButNotEmitted = ffw.filter((fw,x,y) => emitOutput.emittedFiles.indexOf(fw) === -1)
+
+        if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
+            logger.error("emitted and declared files are not equal")
+            logger.error("emitted but not declared", emittedButNotDeclared)
+            logger.error("declared but not emitted", declaredButNotEmitted)
+        }
+    }
 
     const output = <CompilationResult>{
         results: results,
         problems: problems
     }
     return output
+
+    function commonPath(path1:string,path2:string){
+        let commonPath=""
+        for(let i=0;i<path1.length;i++){
+            if(path1.charAt(i)===path2.charAt(i)){
+                commonPath+=path1.charAt(i)
+            }else{
+                return commonPath
+            }
+        }
+        return commonPath
+    }
 
     function toCompilerOptions(sbtOptions:SbtTypescriptOptions):{ options:CompilerOptions, errors:Diagnostic[] } {
         const unparsedCompilerOptions:any = sbtOptions.tsconfig["compilerOptions"]
@@ -87,8 +139,15 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
             unparsedCompilerOptions.outFile = outFile
         }
         unparsedCompilerOptions.rootDirs = sbtOptions.assetsDirs
+        unparsedCompilerOptions.listEmittedFiles = true
         return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json")
 
+    }
+
+    function flatFilesWritten(results:CompilationFileResult[]):string[] {
+        const files:string[] = []
+        results.forEach(cfr => cfr.result.filesWritten.forEach(fw => files.push(fw)))
+        return files
     }
 
     function isCodeFile(f:SourceFile) {

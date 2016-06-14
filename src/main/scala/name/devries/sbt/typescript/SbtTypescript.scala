@@ -7,7 +7,7 @@ import com.typesafe.sbt.web.PathMapping
 import com.typesafe.sbt.web.pipeline.Pipeline
 import sbt.{File, _}
 import sbt.Keys._
-import spray.json._
+import spray.json.{JsArray, JsString, _}
 import com.typesafe.sbt.jse.SbtJsTask.autoImport.JsTaskKeys._
 import com.typesafe.sbt.web.Import.WebKeys._
 import com.typesafe.sbt.web.SbtWeb.autoImport._
@@ -105,12 +105,11 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       }
     }
 
-    def assetsDirs(assetDir:String, testassetDir:String)={
+    def toJsArray(mainDir:String, testDir:String)={
       if(config==Assets){
-        JsArray(JsString(assetDir))
+        JsArray(JsString(mainDir))
       }else if(config==TestAssets){
-        JsArray(JsString(assetDir),
-          JsString(testassetDir))
+        JsArray(JsString(mainDir), JsString(testDir))
       }else{
         throw new IllegalStateException
       }
@@ -123,12 +122,13 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
         "logLevel" -> JsString(logLevel.value.toString),
         "tsconfig" -> parseTsConfig().value,
         "tsconfigDir" -> JsString(projectFile.value.getParent),
-        "assetsDirs" -> assetsDirs(
-          assetDir= (sourceDirectory in Assets).value.getAbsolutePath,
-          testassetDir = (sourceDirectory in TestAssets).value.getAbsolutePath
+        "assetsDirs" -> toJsArray(
+          mainDir= (sourceDirectory in Assets).value.getAbsolutePath,
+          testDir = (sourceDirectory in TestAssets).value.getAbsolutePath
         ),
         "tsCodesToIgnore" -> JsArray(tsCodesToIgnore.value.toVector.map(JsNumber(_))),
-        "nodeModulesDir" -> JsString(webJarsNodeModulesDirectory.value.getAbsolutePath),
+        "nodeModulesDirs" -> toJsArray((webJarsNodeModulesDirectory in Assets).value.getAbsolutePath,
+          (webJarsNodeModulesDirectory in TestAssets).value.getAbsolutePath),
         "resolveFromNodeModulesDir" -> JsBoolean(resolveFromWebjarsNodeModulesDir.value),
         "runMode" -> JsString(getCompileMode.value.toString)
       ) ++ optionalFields(Map(
@@ -138,6 +138,10 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       )
       ).toString()
     )
+  }
+
+  def getRelativeAssetDir(config:Configuration)=Def.setting{
+    IO.relativize(sourceDirectory.value.getAbsoluteFile,(sourceDirectory in config).value.getAbsoluteFile).getOrElse(throw new IllegalStateException())
   }
 
   def setupTsCompilationTask() = Def.task{
@@ -197,7 +201,6 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
 
   def typescriptPipeTask: Def.Initialize[Task[Pipeline.Stage]] = Def.task {
     inputMappings =>
-
 
       val isTypescript:PathMapping => Boolean ={case (file,path)=> (includeFilter in typescript in Assets).value.accept(file)}
       val minustypescriptMappings = inputMappings.filterNot(isTypescript)

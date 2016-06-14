@@ -92,6 +92,7 @@ class SourceMapping {
 class SourceMappings {
     public mappings:SourceMapping[]
     private absolutePaths:string[]
+    private relativePaths:string[]
 
     constructor(sourceFileMappings:string[][]) {
         this.mappings = sourceFileMappings.map((a)=> new SourceMapping(a))
@@ -104,6 +105,12 @@ class SourceMappings {
         return this.absolutePaths
     }
 
+    asRelativePaths():string[] {
+        if (!this.relativePaths) {
+            this.relativePaths = this.mappings.map((sm)=> sm.relativePath)
+        }
+        return this.relativePaths
+    }
     find(sourceFileName:string):Option<SourceMapping> {
         const absPath = path.normalize(sourceFileName)
         const index = this.asAbsolutePaths().indexOf(absPath)
@@ -195,7 +202,7 @@ interface SbtTypescriptOptions {
     assetsDirs:string[],
     tsCodesToIgnore:number[],
     extraFiles:string[],
-    nodeModulesDir:string,
+    nodeModulesDirs:string[],
     resolveFromNodeModulesDir:boolean
 }
 

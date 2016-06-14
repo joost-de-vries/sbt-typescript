@@ -17,8 +17,10 @@ scalacOptions ++= Seq(
   "-Ywarn-adapted-args"
 )
 libraryDependencies ++= Seq(
-  "org.webjars.npm" % "typescript" % "1.9.0-dev.20160609-1.0",
-  "org.webjars" % "mkdirp" % "0.3.5"
+  "org.webjars.npm" % "typescript" % "1.9.0-dev.20160614-1.0",
+  "org.webjars" % "mkdirp" % "0.3.5",
+  "org.webjars.npm" % "minimatch" % "3.0.0",
+  "org.webjars.npm" % "fs-extra" % "0.26.6"
 )
 
 resolvers ++= Seq(
