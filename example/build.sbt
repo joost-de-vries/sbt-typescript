@@ -7,6 +7,8 @@ JsEngineKeys.engineType := JsEngineKeys.EngineType.Node
 
 logLevel in typescript := Level.Debug
 
+assertCompilation in typescript := true
+
 libraryDependencies ++= Seq(
   "org.webjars.npm" % "angular2" % "2.0.0-beta.7",
   "org.webjars.npm" % "systemjs" % "0.19.20",

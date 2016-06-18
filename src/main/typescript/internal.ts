@@ -203,7 +203,8 @@ interface SbtTypescriptOptions {
     tsCodesToIgnore:number[],
     extraFiles:string[],
     nodeModulesDirs:string[],
-    resolveFromNodeModulesDir:boolean
+    resolveFromNodeModulesDir:boolean,
+    assertCompilation:boolean
 }
 
 function replaceFileExtension(file:string, ext:string) {

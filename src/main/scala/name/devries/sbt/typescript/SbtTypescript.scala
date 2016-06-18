@@ -56,6 +56,8 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
 
     val setupTscCompilation = TaskKey[Unit]("setup-tsc-compilation", "Setup tsc compilation. For example to get your IDE to compilate typescript.")
 
+    val assertCompilation = SettingKey[Boolean]("typescript-asserts", "for debugging purposes: asserts that tsc produces the expected files")
+
   }
 
   val getTsConfig = TaskKey[JsObject]("get-tsconfig", "parses the tsconfig.json file")
@@ -82,7 +84,8 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     compileMode := CompileMode.Compile,
     getCompileMode := getCompileModeTask.value,
     outFile := "main.js",
-    setupTscCompilation := setupTsCompilationTask().value
+    setupTscCompilation := setupTsCompilationTask().value,
+    assertCompilation := false
   ) ++ inTask(typescript)(
     SbtJsTask.jsTaskSpecificUnscopedProjectSettings ++
       inConfig(Assets)(typescriptUnscopedSettings(Assets)) ++
@@ -132,7 +135,8 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
           mainDir = (webJarsNodeModulesDirectory in Assets).value.getAbsolutePath,
           testDir = (webJarsNodeModulesDirectory in TestAssets).value.getAbsolutePath),
         "resolveFromNodeModulesDir" -> JsBoolean(resolveFromWebjarsNodeModulesDir.value),
-        "runMode" -> JsString(getCompileMode.value.toString)
+        "runMode" -> JsString(getCompileMode.value.toString),
+        "assertCompilation" -> JsBoolean(assertCompilation.value)
       ) ++ optionalFields(Map(
         "extraFiles" -> typingsFile.value.map(tf => JsArray(JsString(tf.getCanonicalPath))),
         "stageOutFile" -> {
