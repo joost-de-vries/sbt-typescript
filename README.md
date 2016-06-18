@@ -1,7 +1,3 @@
-#Let's meet in person at Scala Days Berlin
-I like talking Scala, Play, Typescript, Angular2 etc etc. Would be fun to meet you there!  
-You can message me through twitter.
-
 #sbt-typescript [![Build Status](https://travis-ci.org/joost-de-vries/sbt-typescript.png?branch=master)](https://travis-ci.org/joost-de-vries/sbt-typescript)
 This sbt plugin compiles the Typescript code in your Play application to javascript fit for consumption by your average browser and device.  
   
