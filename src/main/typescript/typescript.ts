@@ -7,10 +7,6 @@ import {
     SourceFile,
     CompilerOptions,
     DiagnosticCategory,
-
-
-
-
     EmitResult,
     convertCompilerOptionsFromJson,
     createProgram,
