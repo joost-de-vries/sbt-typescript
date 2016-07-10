@@ -218,6 +218,17 @@ function compile(sourceMaps, sbtOptions, target) {
         if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
             logger.error("emitted and declared files are not equal");
         }
+        return;
+        function minus(arr1, arr2) {
+            var r = [];
+            for (var _i = 0, arr1_1 = arr1; _i < arr1_1.length; _i++) {
+                var s = arr1_1[_i];
+                if (arr2.indexOf(s) == -1) {
+                    r.push(s);
+                }
+            }
+            return r;
+        }
     }
     function moveEmittedTestAssets(sbtOpts) {
         var common = commonPath(sbtOpts.assetsDirs[0], sbtOpts.assetsDirs[1]);
@@ -261,16 +272,6 @@ function compile(sourceMaps, sbtOptions, target) {
                 }
             });
         });
-    }
-    function minus(arr1, arr2) {
-        var r = [];
-        for (var _i = 0, arr1_1 = arr1; _i < arr1_1.length; _i++) {
-            var s = arr1_1[_i];
-            if (arr2.indexOf(s) == -1) {
-                r.push(s);
-            }
-        }
-        return r;
     }
     function commonPath(path1, path2) {
         var commonPath = "";

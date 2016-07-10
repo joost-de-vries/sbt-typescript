@@ -119,6 +119,16 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
         if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
             logger.error("emitted and declared files are not equal")
         }
+        return
+        function minus(arr1:string[], arr2:string[]):string[] {
+            const r:string[] = []
+            for (const s of arr1) {
+                if (arr2.indexOf(s) == -1) {
+                    r.push(s)
+                }
+            }
+            return r
+        }
     }
 
     function moveEmittedTestAssets(sbtOpts:SbtTypescriptOptions) {
@@ -176,16 +186,6 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
                 }
             })
         })
-    }
-
-    function minus(arr1:string[], arr2:string[]):string[] {
-        const r:string[] = []
-        for (const s of arr1) {
-            if (arr2.indexOf(s) == -1) {
-                r.push(s)
-            }
-        }
-        return r
     }
 
     function commonPath(path1:string, path2:string) {
