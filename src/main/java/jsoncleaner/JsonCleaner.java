@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 /**
  *
  */
-public abstract class JsonCleaner {
+public class JsonCleaner {
 
     private static final String TOKENIZER = "\"|(/\\*)|(\\*/)|(//)|\\n|\\r";
     private static final String MAGIC = "(\\\\)*$";
