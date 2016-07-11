@@ -7,10 +7,16 @@ import {
     SourceFile,
     CompilerOptions,
     DiagnosticCategory,
+    EmitResult,
+    convertCompilerOptionsFromJson,
+    createProgram,
+    createCompilerHost,
+    getPreEmitDiagnostics,
+    flattenDiagnosticMessageText,
+    sys
 } from "typescript"
 
-const fs = require("fs")
-const ts = require("typescript")
+const fs = require("fs-extra")
 
 const args:Args = parseArgs(process.argv)
 const sbtTypescriptOpts:SbtTypescriptOptions = args.options
@@ -20,7 +26,7 @@ const logger = new Logger(sbtTypescriptOpts.logLevel)
 const sourceMappings = new SourceMappings(args.sourceFileMappings)
 
 logger.debug("starting compilation of ", sourceMappings.mappings.map((sm)=> sm.relativePath))
-logger.debug("from ", sbtTypescriptOpts.assetsDir)
+logger.debug("from ", sbtTypescriptOpts.assetsDirs)
 logger.debug("to ", args.target)
 logger.debug("args ", args)
 
@@ -40,25 +46,33 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
     else {
         compilerOptions.outDir = target
 
-        if (sbtTypescriptOpts.resolveFromNodeModulesDir) {
-            // see https://github.com/Microsoft/TypeScript-Handbook/blob/release-2.0/pages/Module%20Resolution.md#path-mapping
-            compilerOptions.baseUrl="."
-            const paths = {
-                "*": ["*",sbtTypescriptOpts.nodeModulesDir +"/*"]
-            }
-            compilerOptions.paths = paths
+        let nodeModulesPaths:string[] = []
+        if (sbtOptions.resolveFromNodeModulesDir) {
+            nodeModulesPaths = sbtOptions.nodeModulesDirs.map(p => p + "/*")
+        }
+
+        const assetPaths = sbtOptions.assetsDirs.map(p => p + "/*")
+        // see https://github.com/Microsoft/TypeScript-Handbook/blob/release-2.0/pages/Module%20Resolution.md#path-mapping
+        compilerOptions.baseUrl = "."
+        compilerOptions.paths = {
+            "*": ["*"].concat(nodeModulesPaths)//.concat(assetPaths)
         }
         logger.debug("using tsc options ", compilerOptions)
-        const compilerHost = ts.createCompilerHost(compilerOptions)
+        const compilerHost = createCompilerHost(compilerOptions)
 
         let filesToCompile = sourceMaps.asAbsolutePaths()
-        if (sbtTypescriptOpts.extraFiles) filesToCompile = filesToCompile.concat(sbtTypescriptOpts.extraFiles)
+        if (sbtOptions.extraFiles) filesToCompile = filesToCompile.concat(sbtOptions.extraFiles)
 
-        const program:Program = ts.createProgram(filesToCompile, compilerOptions, compilerHost)
+        logger.debug("files to compile ", filesToCompile)
+        const program:Program = createProgram(filesToCompile, compilerOptions, compilerHost)
         logger.debug("created program")
         problems.push(...findPreemitProblems(program, sbtOptions.tsCodesToIgnore))
 
         const emitOutput = program.emit()
+
+        if (sbtOptions.assetsDirs.length === 2) {
+            moveEmittedTestAssets(sbtOptions)
+        }
 
         problems.push(...toProblems(emitOutput.diagnostics, sbtOptions.tsCodesToIgnore))
 
@@ -68,15 +82,123 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
         }
 
         results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions)))
-    }
 
-    logger.debug("files written", results.map((r)=> r.result.filesWritten))
+        if (sbtOptions.assertCompilation) {
+            logAndAssertEmitted(results,emitOutput)
+        }
+    }
 
     const output = <CompilationResult>{
         results: results,
         problems: problems
     }
     return output
+
+    function logAndAssertEmitted(declaredResults:CompilationFileResult[],emitOutput:EmitResult) {
+        const ffw = flatFilesWritten(declaredResults)
+        logger.debug("files written", ffw)
+        logger.debug("files emitted", emitOutput.emittedFiles)
+
+        const emittedButNotDeclared = minus(emitOutput.emittedFiles, ffw)
+        const declaredButNotEmitted = minus(ffw, emitOutput.emittedFiles)
+
+        notExistingFiles(ffw)
+            .then(nef => {
+                if (nef.length > 0) {
+                    logger.error(`files declared that have not been generated ${nef}`)
+                } else {
+                    logger.debug(`all declared files exist`)
+                }
+
+            })
+            .catch(err => logger.error("unexpected error", err))
+
+
+        logger.error("emitted but not declared", emittedButNotDeclared)
+        logger.error("declared but not emitted", declaredButNotEmitted)
+        if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
+            logger.error("emitted and declared files are not equal")
+        }
+        return
+        function minus(arr1:string[], arr2:string[]):string[] {
+            const r:string[] = []
+            for (const s of arr1) {
+                if (arr2.indexOf(s) == -1) {
+                    r.push(s)
+                }
+            }
+            return r
+        }
+    }
+
+    function moveEmittedTestAssets(sbtOpts:SbtTypescriptOptions) {
+        // we're compiling testassets
+        // unfortunately because we have two rootdirs the paths are not being relativized to outDir
+        // see https://github.com/Microsoft/TypeScript/issues/7837
+        // so we get
+        // ...<outdir>/main/assets/<code> and
+        // ...<outdir>/test/assets/<code> because they have ./src in common
+        // we need to find out what their relative paths are wrt the path they have in common
+        const common = commonPath(sbtOpts.assetsDirs[0], sbtOpts.assetsDirs[1])
+        const relPathAssets = sbtOpts.assetsDirs[0].substring(common.length)
+        const relPathTestAssets = sbtOpts.assetsDirs[1].substring(common.length)
+
+        // and move the desired emitted test files up to the target path
+        // logger.debug("will remove",target+"/"+relPathAssets)
+        // logger.debug("will move contents of "+ target+"/"+relPathTestAssets+" to "+target)
+        fs.remove(target + "/" + relPathAssets, (e:any) => logger.debug("removed", target + "/" + relPathAssets))
+        fs.copy(target + "/" + relPathTestAssets, target, (e:any) => {
+            logger.debug("moved contents of " + target + "/" + relPathTestAssets + " to " + target)
+            fs.remove(target + "/" + relPathTestAssets, (e:any)=> true)
+        })
+    }
+
+    function notExistingFiles(filesDeclared:string[]):Promise<string[]> {
+        return Promise.all(filesDeclared.map(exists))
+            .then((e:[string,boolean][])=> {
+                const r:string[] = e.filter(a=> {
+                    const [s,exist]=a
+                    return !exist
+                })
+                    .map(a=> {
+                        const [s,b]=a
+                        return s
+                    })
+                return r
+
+            })
+    }
+
+    function exists(file:string):Promise<[string,boolean]> {
+        return new Promise<[string,boolean]>((resolve, reject)=> {
+            fs.access(file, (errAccess:any)=> {
+                if (errAccess) {
+                    resolve([file, false])
+                } else {
+                    fs.stat(file, (err:any, stats:any)=> {
+                        if (err) {
+                            reject(err)
+                        }
+                        else {
+                            resolve([file, stats.isFile()])
+                        }
+                    })
+                }
+            })
+        })
+    }
+
+    function commonPath(path1:string, path2:string) {
+        let commonPath = ""
+        for (let i = 0; i < path1.length; i++) {
+            if (path1.charAt(i) === path2.charAt(i)) {
+                commonPath += path1.charAt(i)
+            } else {
+                return commonPath
+            }
+        }
+        return commonPath
+    }
 
     function toCompilerOptions(sbtOptions:SbtTypescriptOptions):{ options:CompilerOptions, errors:Diagnostic[] } {
         const unparsedCompilerOptions:any = sbtOptions.tsconfig["compilerOptions"]
@@ -86,9 +208,23 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
             logger.debug("single outFile ", outFile)
             unparsedCompilerOptions.outFile = outFile
         }
-        unparsedCompilerOptions.rootDir = sbtOptions.assetsDir
-        return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json")
+        if (sbtOptions.assetsDirs.length == 2) {
+            unparsedCompilerOptions.rootDirs = sbtOptions.assetsDirs
 
+        } else if (sbtOptions.assetsDirs.length == 1) {
+            // ??! one root dir creates the correct output files, two rootdirs throws away shared directories
+            unparsedCompilerOptions.rootDir = sbtOptions.assetsDirs[0]
+        } else {
+            throw new Error("nr of asset dirs should always be 1 or 2")
+        }
+        unparsedCompilerOptions.listEmittedFiles = true
+        return convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json")
+    }
+
+    function flatFilesWritten(results:CompilationFileResult[]):string[] {
+        const files:string[] = []
+        results.forEach(cfr => cfr.result.filesWritten.forEach(fw => files.push(fw)))
+        return files
     }
 
     function isCodeFile(f:SourceFile) {
@@ -126,7 +262,6 @@ function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:Comp
 
             if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
                 let outputFileMap = outputFile + ".map"
-                fixSourceMapFile(outputFileMap)
                 filesWritten.push(outputFileMap)
             }
 
@@ -147,18 +282,12 @@ function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:Comp
                     return outFile
                 }
             }
-
-            function fixSourceMapFile(file:string) {
-                let sourceMap = JSON.parse(fs.readFileSync(file, "utf-8"))
-                sourceMap.sources = sourceMap.sources.map((source:string)=> path.basename(source))
-                fs.writeFileSync(file, JSON.stringify(sourceMap), "utf-8")
-            }
         })
     }
 }
 
 function findPreemitProblems(program:Program, tsIgnoreList?:number[]):Problem[] {
-    let diagnostics = ts.getPreEmitDiagnostics(program)
+    let diagnostics = getPreEmitDiagnostics(program)
 
     if (tsIgnoreList) return diagnostics.filter(ignoreDiagnostic(tsIgnoreList)).map(parseDiagnostic)
     else return diagnostics.map(parseDiagnostic)
@@ -189,7 +318,7 @@ function parseDiagnostic(d:Diagnostic):Problem {
     let problem = <Problem>{
         lineNumber: lineCol.line,
         characterOffset: lineCol.character,
-        message: "TS" + d.code + " " + ts.flattenDiagnosticMessageText(d.messageText, ts.sys.newLine),
+        message: "TS" + d.code + " " + flattenDiagnosticMessageText(d.messageText, sys.newLine),
         source: fileName,
         severity: toSeverity(d.category),
         lineContent: lineText

@@ -84,6 +84,12 @@ var SourceMappings = (function () {
         }
         return this.absolutePaths;
     };
+    SourceMappings.prototype.asRelativePaths = function () {
+        if (!this.relativePaths) {
+            this.relativePaths = this.mappings.map(function (sm) { return sm.relativePath; });
+        }
+        return this.relativePaths;
+    };
     SourceMappings.prototype.find = function (sourceFileName) {
         var absPath = path.normalize(sourceFileName);
         var index = this.asAbsolutePaths().indexOf(absPath);
@@ -133,14 +139,14 @@ function replaceFileExtension(file, ext) {
     var oldExt = path.extname(file);
     return file.substring(0, file.length - oldExt.length) + ext;
 }
-var fs = require("fs");
-var ts = require("typescript");
+var typescript_1 = require("typescript");
+var fs = require("fs-extra");
 var args = parseArgs(process.argv);
 var sbtTypescriptOpts = args.options;
 var logger = new Logger(sbtTypescriptOpts.logLevel);
 var sourceMappings = new SourceMappings(args.sourceFileMappings);
 logger.debug("starting compilation of ", sourceMappings.mappings.map(function (sm) { return sm.relativePath; }));
-logger.debug("from ", sbtTypescriptOpts.assetsDir);
+logger.debug("from ", sbtTypescriptOpts.assetsDirs);
 logger.debug("to ", args.target);
 logger.debug("args ", args);
 var compileResult = compile(sourceMappings, sbtTypescriptOpts, args.target);
@@ -154,35 +160,131 @@ function compile(sourceMaps, sbtOptions, target) {
     }
     else {
         compilerOptions.outDir = target;
-        if (sbtTypescriptOpts.resolveFromNodeModulesDir) {
-            compilerOptions.baseUrl = ".";
-            var paths = {
-                "*": ["*", sbtTypescriptOpts.nodeModulesDir + "/*"]
-            };
-            compilerOptions.paths = paths;
+        var nodeModulesPaths = [];
+        if (sbtOptions.resolveFromNodeModulesDir) {
+            nodeModulesPaths = sbtOptions.nodeModulesDirs.map(function (p) { return p + "/*"; });
         }
+        var assetPaths = sbtOptions.assetsDirs.map(function (p) { return p + "/*"; });
+        compilerOptions.baseUrl = ".";
+        compilerOptions.paths = {
+            "*": ["*"].concat(nodeModulesPaths)
+        };
         logger.debug("using tsc options ", compilerOptions);
-        var compilerHost = ts.createCompilerHost(compilerOptions);
+        var compilerHost = typescript_1.createCompilerHost(compilerOptions);
         var filesToCompile = sourceMaps.asAbsolutePaths();
-        if (sbtTypescriptOpts.extraFiles)
-            filesToCompile = filesToCompile.concat(sbtTypescriptOpts.extraFiles);
-        var program = ts.createProgram(filesToCompile, compilerOptions, compilerHost);
+        if (sbtOptions.extraFiles)
+            filesToCompile = filesToCompile.concat(sbtOptions.extraFiles);
+        logger.debug("files to compile ", filesToCompile);
+        var program = typescript_1.createProgram(filesToCompile, compilerOptions, compilerHost);
         logger.debug("created program");
         problems.push.apply(problems, findPreemitProblems(program, sbtOptions.tsCodesToIgnore));
         var emitOutput = program.emit();
+        if (sbtOptions.assetsDirs.length === 2) {
+            moveEmittedTestAssets(sbtOptions);
+        }
         problems.push.apply(problems, toProblems(emitOutput.diagnostics, sbtOptions.tsCodesToIgnore));
         if (logger.isDebug) {
             var declarationFiles = program.getSourceFiles().filter(isDeclarationFile);
             logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.");
         }
         results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions)));
+        if (sbtOptions.assertCompilation) {
+            logAndAssertEmitted(results, emitOutput);
+        }
     }
-    logger.debug("files written", results.map(function (r) { return r.result.filesWritten; }));
     var output = {
         results: results,
         problems: problems
     };
     return output;
+    function logAndAssertEmitted(declaredResults, emitOutput) {
+        var ffw = flatFilesWritten(declaredResults);
+        logger.debug("files written", ffw);
+        logger.debug("files emitted", emitOutput.emittedFiles);
+        var emittedButNotDeclared = minus(emitOutput.emittedFiles, ffw);
+        var declaredButNotEmitted = minus(ffw, emitOutput.emittedFiles);
+        notExistingFiles(ffw)
+            .then(function (nef) {
+            if (nef.length > 0) {
+                logger.error("files declared that have not been generated " + nef);
+            }
+            else {
+                logger.debug("all declared files exist");
+            }
+        })
+            .catch(function (err) { return logger.error("unexpected error", err); });
+        logger.error("emitted but not declared", emittedButNotDeclared);
+        logger.error("declared but not emitted", declaredButNotEmitted);
+        if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
+            logger.error("emitted and declared files are not equal");
+        }
+        return;
+        function minus(arr1, arr2) {
+            var r = [];
+            for (var _i = 0, arr1_1 = arr1; _i < arr1_1.length; _i++) {
+                var s = arr1_1[_i];
+                if (arr2.indexOf(s) == -1) {
+                    r.push(s);
+                }
+            }
+            return r;
+        }
+    }
+    function moveEmittedTestAssets(sbtOpts) {
+        var common = commonPath(sbtOpts.assetsDirs[0], sbtOpts.assetsDirs[1]);
+        var relPathAssets = sbtOpts.assetsDirs[0].substring(common.length);
+        var relPathTestAssets = sbtOpts.assetsDirs[1].substring(common.length);
+        fs.remove(target + "/" + relPathAssets, function (e) { return logger.debug("removed", target + "/" + relPathAssets); });
+        fs.copy(target + "/" + relPathTestAssets, target, function (e) {
+            logger.debug("moved contents of " + target + "/" + relPathTestAssets + " to " + target);
+            fs.remove(target + "/" + relPathTestAssets, function (e) { return true; });
+        });
+    }
+    function notExistingFiles(filesDeclared) {
+        return Promise.all(filesDeclared.map(exists))
+            .then(function (e) {
+            var r = e.filter(function (a) {
+                var s = a[0], exist = a[1];
+                return !exist;
+            })
+                .map(function (a) {
+                var s = a[0], b = a[1];
+                return s;
+            });
+            return r;
+        });
+    }
+    function exists(file) {
+        return new Promise(function (resolve, reject) {
+            fs.access(file, function (errAccess) {
+                if (errAccess) {
+                    resolve([file, false]);
+                }
+                else {
+                    fs.stat(file, function (err, stats) {
+                        if (err) {
+                            reject(err);
+                        }
+                        else {
+                            resolve([file, stats.isFile()]);
+                        }
+                    });
+                }
+            });
+        });
+    }
+    function commonPath(path1, path2) {
+        var commonPath = "";
+        for (var i = 0; i < path1.length; i++) {
+            if (path1.charAt(i) === path2.charAt(i)) {
+                commonPath += path1.charAt(i);
+            }
+            else {
+                return commonPath;
+            }
+        }
+        return commonPath;
+    }
     function toCompilerOptions(sbtOptions) {
         var unparsedCompilerOptions = sbtOptions.tsconfig["compilerOptions"];
         if (unparsedCompilerOptions.outFile) {
@@ -190,8 +292,22 @@ function compile(sourceMaps, sbtOptions, target) {
             logger.debug("single outFile ", outFile);
             unparsedCompilerOptions.outFile = outFile;
         }
-        unparsedCompilerOptions.rootDir = sbtOptions.assetsDir;
-        return ts.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json");
+        if (sbtOptions.assetsDirs.length == 2) {
+            unparsedCompilerOptions.rootDirs = sbtOptions.assetsDirs;
+        }
+        else if (sbtOptions.assetsDirs.length == 1) {
+            unparsedCompilerOptions.rootDir = sbtOptions.assetsDirs[0];
+        }
+        else {
+            throw new Error("nr of asset dirs should always be 1 or 2");
+        }
+        unparsedCompilerOptions.listEmittedFiles = true;
+        return typescript_1.convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json");
+    }
+    function flatFilesWritten(results) {
+        var files = [];
+        results.forEach(function (cfr) { return cfr.result.filesWritten.forEach(function (fw) { return files.push(fw); }); });
+        return files;
     }
     function isCodeFile(f) {
         return !(isDeclarationFile(f));
@@ -221,7 +337,6 @@ function toCompilationResult(sourceMappings, compilerOptions) {
             }
             if (compilerOptions.sourceMap && !compilerOptions.inlineSourceMap) {
                 var outputFileMap = outputFile + ".map";
-                fixSourceMapFile(outputFileMap);
                 filesWritten.push(outputFileMap);
             }
             var result = {
@@ -241,16 +356,11 @@ function toCompilationResult(sourceMappings, compilerOptions) {
                     return outFile;
                 }
             }
-            function fixSourceMapFile(file) {
-                var sourceMap = JSON.parse(fs.readFileSync(file, "utf-8"));
-                sourceMap.sources = sourceMap.sources.map(function (source) { return path.basename(source); });
-                fs.writeFileSync(file, JSON.stringify(sourceMap), "utf-8");
-            }
         });
     };
 }
 function findPreemitProblems(program, tsIgnoreList) {
-    var diagnostics = ts.getPreEmitDiagnostics(program);
+    var diagnostics = typescript_1.getPreEmitDiagnostics(program);
     if (tsIgnoreList)
         return diagnostics.filter(ignoreDiagnostic(tsIgnoreList)).map(parseDiagnostic);
     else
@@ -279,7 +389,7 @@ function parseDiagnostic(d) {
     var problem = {
         lineNumber: lineCol.line,
         characterOffset: lineCol.character,
-        message: "TS" + d.code + " " + ts.flattenDiagnosticMessageText(d.messageText, ts.sys.newLine),
+        message: "TS" + d.code + " " + typescript_1.flattenDiagnosticMessageText(d.messageText, typescript_1.sys.newLine),
         source: fileName,
         severity: toSeverity(d.category),
         lineContent: lineText
