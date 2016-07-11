@@ -1,4 +1,4 @@
-package name.devries.sbt.typescript;
+package jsoncleaner;
 
 //
 //  Minify.java

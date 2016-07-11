@@ -11,6 +11,7 @@ import spray.json.{JsArray, JsString, _}
 import com.typesafe.sbt.jse.SbtJsTask.autoImport.JsTaskKeys._
 import com.typesafe.sbt.web.Import.WebKeys._
 import com.typesafe.sbt.web.SbtWeb.autoImport._
+import jsoncleaner.JsonCleaner
 
 /** typescript compilation can run during 'sbt assets' compilation or during Play 'sbt stage' as a sbt-web pipe */
 sealed class CompileMode(val value: String) {
