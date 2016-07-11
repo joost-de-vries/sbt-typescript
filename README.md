@@ -13,7 +13,7 @@ As such it
  - [x] allows for including typings files in the build. This is essential for compilation to ES5 because the standard ES5 lib doesn't have some types that f.i. Angular2 needs. These types are offered for ES5 by ao ES6-shims.
  - [x] allows for suppression of compilation errors. This may seem strange to people coming from conventional statically typed languages. But the `tsc` lives in an untyped world. So it _will_ emit perfectly functional code even if some types can't be checked. Suppression of a specific error is particularly useful if one's using a library for which type information is not available. 
  - [x] supports writing unittests in typescript
- - [x] uses Typescript 1.8.10
+ - [x] uses Typescript 2.0
  - [x] JS parts are written in Typescript.
  
 ###getting started with Typescript and Angular2
@@ -23,7 +23,7 @@ I've made an activator tutorial template to get you started. If you have activat
 Create a `tsconfig.json` file in the root of your project with the required [compiler options](https://github.com/Microsoft/TypeScript/wiki/Compiler-Options).  
 Add the following line to your `project\plugins.sbt`:
 
-    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.2.7")
+    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.3.0-beta.2")
 
 If your project is not a Play application it will have to enable `sbt-web` in `build.sbt`:
 
@@ -62,9 +62,13 @@ If you use the `stage` compile mode the `outFile` option is also managed by `sbt
 
 ##release notes
 
+#### v0.3.0-beta.2
+- uses typescript 2.0 beta (npm 2.0.0)
+
 #### v0.3.0SNAPSHOT 
 - uses standard typescript functionality to resolve against webjars. Instead of the previous custom rolled module resolution extension.
 - uses a snapshot of the upcoming typescript 2.0
+- add output assertion options
 
 #### v0.2.7
 - adds convenience task for setting up tsc compilation

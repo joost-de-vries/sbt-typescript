@@ -8,4 +8,6 @@ JsEngineKeys.engineType := JsEngineKeys.EngineType.Node
 
 logLevel in typescript := Level.Debug
 
+assertCompilation := true
+
 
