@@ -18,8 +18,8 @@ import {
 
 const fs = require("fs-extra")
 
-const args:Args = parseArgs(process.argv)
-const sbtTypescriptOpts:SbtTypescriptOptions = args.options
+const args: Args = parseArgs(process.argv)
+const sbtTypescriptOpts: SbtTypescriptOptions = args.options
 
 const logger = new Logger(sbtTypescriptOpts.logLevel)
 
@@ -34,9 +34,9 @@ const compileResult = compile(sourceMappings, sbtTypescriptOpts, args.target)
 
 compileDone(compileResult)
 
-function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, target:string):CompilationResult {
-    const problems:Problem[] = []
-    let results:CompilationFileResult[] = []
+function compile(sourceMaps: SourceMappings, sbtOptions: SbtTypescriptOptions, target: string): CompilationResult {
+    const problems: Problem[] = []
+    let results: CompilationFileResult[] = []
 
     const {options: compilerOptions, errors} = toCompilerOptions(sbtOptions)
 
@@ -46,7 +46,7 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
     else {
         compilerOptions.outDir = target
 
-        let nodeModulesPaths:string[] = []
+        let nodeModulesPaths: string[] = []
         if (sbtOptions.resolveFromNodeModulesDir) {
             nodeModulesPaths = sbtOptions.nodeModulesDirs.map(p => p + "/*")
         }
@@ -64,7 +64,7 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
         if (sbtOptions.extraFiles) filesToCompile = filesToCompile.concat(sbtOptions.extraFiles)
 
         logger.debug("files to compile ", filesToCompile)
-        const program:Program = createProgram(filesToCompile, compilerOptions, compilerHost)
+        const program: Program = createProgram(filesToCompile, compilerOptions, compilerHost)
         logger.debug("created program")
         problems.push(...findPreemitProblems(program, sbtOptions.tsCodesToIgnore))
 
@@ -81,10 +81,14 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
             logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.")
         }
 
-        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions)))
+        if (!emitOutput.emitSkipped) {
+            results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions)))
+        } else {
+            results = []
+        }
 
         if (sbtOptions.assertCompilation) {
-            logAndAssertEmitted(results,emitOutput)
+            logAndAssertEmitted(results, emitOutput)
         }
     }
 
@@ -94,7 +98,7 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
     }
     return output
 
-    function logAndAssertEmitted(declaredResults:CompilationFileResult[],emitOutput:EmitResult) {
+    function logAndAssertEmitted(declaredResults: CompilationFileResult[], emitOutput: EmitResult) {
         const ffw = flatFilesWritten(declaredResults)
         logger.debug("files written", ffw)
         logger.debug("files emitted", emitOutput.emittedFiles)
@@ -113,16 +117,18 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
             })
             .catch(err => logger.error("unexpected error", err))
 
-
-        logger.error("emitted but not declared", emittedButNotDeclared)
-        logger.error("declared but not emitted", declaredButNotEmitted)
         if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
-            logger.error("emitted and declared files are not equal")
+            const errorMessage = `
+emitted and declared files are not equal
+emitted but not declared ${emittedButNotDeclared}
+declared but not emitted ${declaredButNotEmitted}
+`
+            throw new Error(errorMessage)
         }
         return
-        function minus(arr1:string[], arr2:string[]):string[] {
-            const r:string[] = []
-            for (const s of arr1) {
+        function minus(arr1: string[], arr2: string[]): string[] {
+            const r: string[] = []
+            for (let s of arr1) {
                 if (arr2.indexOf(s) == -1) {
                     r.push(s)
                 }
@@ -131,7 +137,7 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
         }
     }
 
-    function moveEmittedTestAssets(sbtOpts:SbtTypescriptOptions) {
+    function moveEmittedTestAssets(sbtOpts: SbtTypescriptOptions) {
         // we're compiling testassets
         // unfortunately because we have two rootdirs the paths are not being relativized to outDir
         // see https://github.com/Microsoft/TypeScript/issues/7837
@@ -146,17 +152,17 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
         // and move the desired emitted test files up to the target path
         // logger.debug("will remove",target+"/"+relPathAssets)
         // logger.debug("will move contents of "+ target+"/"+relPathTestAssets+" to "+target)
-        fs.remove(target + "/" + relPathAssets, (e:any) => logger.debug("removed", target + "/" + relPathAssets))
-        fs.copy(target + "/" + relPathTestAssets, target, (e:any) => {
+        fs.remove(target + "/" + relPathAssets, (e: any) => logger.debug("removed", target + "/" + relPathAssets))
+        fs.copy(target + "/" + relPathTestAssets, target, (e: any) => {
             logger.debug("moved contents of " + target + "/" + relPathTestAssets + " to " + target)
-            fs.remove(target + "/" + relPathTestAssets, (e:any)=> true)
+            fs.remove(target + "/" + relPathTestAssets, (e: any)=> true)
         })
     }
 
-    function notExistingFiles(filesDeclared:string[]):Promise<string[]> {
+    function notExistingFiles(filesDeclared: string[]): Promise<string[]> {
         return Promise.all(filesDeclared.map(exists))
-            .then((e:[string,boolean][])=> {
-                const r:string[] = e.filter(a=> {
+            .then((e: [string,boolean][])=> {
+                const r: string[] = e.filter(a=> {
                     const [s,exist]=a
                     return !exist
                 })
@@ -167,28 +173,28 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
                 return r
 
             })
-    }
-
-    function exists(file:string):Promise<[string,boolean]> {
-        return new Promise<[string,boolean]>((resolve, reject)=> {
-            fs.access(file, (errAccess:any)=> {
-                if (errAccess) {
-                    resolve([file, false])
-                } else {
-                    fs.stat(file, (err:any, stats:any)=> {
-                        if (err) {
-                            reject(err)
-                        }
-                        else {
-                            resolve([file, stats.isFile()])
-                        }
-                    })
-                }
+        function exists(file: string): Promise<[string,boolean]> {
+            return new Promise<[string,boolean]>((resolve, reject)=> {
+                fs.access(file, (errAccess: any)=> {
+                    if (errAccess) {
+                        resolve([file, false])
+                    } else {
+                        fs.stat(file, (err: any, stats: any)=> {
+                            if (err) {
+                                reject(err)
+                            }
+                            else {
+                                resolve([file, stats.isFile()])
+                            }
+                        })
+                    }
+                })
             })
-        })
+        }
     }
 
-    function commonPath(path1:string, path2:string) {
+
+    function commonPath(path1: string, path2: string) {
         let commonPath = ""
         for (let i = 0; i < path1.length; i++) {
             if (path1.charAt(i) === path2.charAt(i)) {
@@ -200,8 +206,8 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
         return commonPath
     }
 
-    function toCompilerOptions(sbtOptions:SbtTypescriptOptions):{ options:CompilerOptions, errors:Diagnostic[] } {
-        const unparsedCompilerOptions:any = sbtOptions.tsconfig["compilerOptions"]
+    function toCompilerOptions(sbtOptions: SbtTypescriptOptions): { options: CompilerOptions, errors: Diagnostic[] } {
+        const unparsedCompilerOptions: any = sbtOptions.tsconfig["compilerOptions"]
         // logger.debug("compilerOptions ", unparsedCompilerOptions)
         if (unparsedCompilerOptions.outFile) {
             const outFile = path.join(target, path.basename(unparsedCompilerOptions.outFile))
@@ -221,23 +227,23 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
         return convertCompilerOptionsFromJson(unparsedCompilerOptions, sbtOptions.tsconfigDir, "tsconfig.json")
     }
 
-    function flatFilesWritten(results:CompilationFileResult[]):string[] {
-        const files:string[] = []
+    function flatFilesWritten(results: CompilationFileResult[]): string[] {
+        const files: string[] = []
         results.forEach(cfr => cfr.result.filesWritten.forEach(fw => files.push(fw)))
         return files
     }
 
-    function isCodeFile(f:SourceFile) {
+    function isCodeFile(f: SourceFile) {
         return !(isDeclarationFile(f))
     }
 
-    function isDeclarationFile(f:SourceFile) {
+    function isDeclarationFile(f: SourceFile) {
         const fileName = f.fileName
         return ".d.ts" === fileName.substring(fileName.length - 5)
     }
 
-    function flatten<T>(xs:Option<T>[]):T[] {
-        let result:T[] = []
+    function flatten<T>(xs: Option<T>[]): T[] {
+        let result: T[] = []
         xs.forEach(x => {
             if (x.value) result.push(x.value)
         })
@@ -245,7 +251,7 @@ function compile(sourceMaps:SourceMappings, sbtOptions:SbtTypescriptOptions, tar
     }
 }
 
-function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:CompilerOptions):(sf:SourceFile)=> Option<CompilationFileResult> {
+function toCompilationResult(sourceMappings: SourceMappings, compilerOptions: CompilerOptions): (sf: SourceFile)=> Option<CompilationFileResult> {
     return sourceFile => {
         return sourceMappings.find(sourceFile.fileName).map((sm)=> {
             // logger.debug("source file is ",sourceFile.fileName)
@@ -274,7 +280,7 @@ function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:Comp
             }
             return result
 
-            function determineOutFile(outFile:string, options:CompilerOptions):string {
+            function determineOutFile(outFile: string, options: CompilerOptions): string {
                 if (options.outFile) {
                     logger.debug("single outFile ", options.outFile)
                     return options.outFile
@@ -286,23 +292,23 @@ function toCompilationResult(sourceMappings:SourceMappings, compilerOptions:Comp
     }
 }
 
-function findPreemitProblems(program:Program, tsIgnoreList?:number[]):Problem[] {
+function findPreemitProblems(program: Program, tsIgnoreList?: number[]): Problem[] {
     let diagnostics = getPreEmitDiagnostics(program)
 
     if (tsIgnoreList) return diagnostics.filter(ignoreDiagnostic(tsIgnoreList)).map(parseDiagnostic)
     else return diagnostics.map(parseDiagnostic)
 }
 
-function toProblems(diagnostics:Diagnostic[], tsIgnoreList?:number[]):Problem[] {
+function toProblems(diagnostics: Diagnostic[], tsIgnoreList?: number[]): Problem[] {
     if (tsIgnoreList) return diagnostics.filter(ignoreDiagnostic(tsIgnoreList)).map(parseDiagnostic)
     else return diagnostics.map(parseDiagnostic)
 }
 
-function ignoreDiagnostic(tsIgnoreList:number[]):(d:Diagnostic)=> boolean {
-    return (d:Diagnostic) => tsIgnoreList.indexOf(d.code) === -1
+function ignoreDiagnostic(tsIgnoreList: number[]): (d: Diagnostic)=> boolean {
+    return (d: Diagnostic) => tsIgnoreList.indexOf(d.code) === -1
 }
 
-function parseDiagnostic(d:Diagnostic):Problem {
+function parseDiagnostic(d: Diagnostic): Problem {
     let lineCol = {line: 0, character: 0}
     let fileName = "tsconfig.json"
     let lineText = ""
@@ -325,7 +331,7 @@ function parseDiagnostic(d:Diagnostic):Problem {
     }
     return problem
 
-    function toSeverity(i:DiagnosticCategory):string {
+    function toSeverity(i: DiagnosticCategory): string {
         if (i === 0) {
             return "warn"
         } else if (i === 1) {

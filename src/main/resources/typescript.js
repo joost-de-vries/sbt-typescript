@@ -187,7 +187,12 @@ function compile(sourceMaps, sbtOptions, target) {
             var declarationFiles = program.getSourceFiles().filter(isDeclarationFile);
             logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.");
         }
-        results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions)));
+        if (!emitOutput.emitSkipped) {
+            results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions)));
+        }
+        else {
+            results = [];
+        }
         if (sbtOptions.assertCompilation) {
             logAndAssertEmitted(results, emitOutput);
         }
@@ -213,10 +218,9 @@ function compile(sourceMaps, sbtOptions, target) {
             }
         })
             .catch(function (err) { return logger.error("unexpected error", err); });
-        logger.error("emitted but not declared", emittedButNotDeclared);
-        logger.error("declared but not emitted", declaredButNotEmitted);
         if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
-            logger.error("emitted and declared files are not equal");
+            var errorMessage = "\nemitted and declared files are not equal\nemitted but not declared " + emittedButNotDeclared + "\ndeclared but not emitted " + declaredButNotEmitted + "\n";
+            throw new Error(errorMessage);
         }
         return;
         function minus(arr1, arr2) {
@@ -253,25 +257,25 @@ function compile(sourceMaps, sbtOptions, target) {
             });
             return r;
         });
-    }
-    function exists(file) {
-        return new Promise(function (resolve, reject) {
-            fs.access(file, function (errAccess) {
-                if (errAccess) {
-                    resolve([file, false]);
-                }
-                else {
-                    fs.stat(file, function (err, stats) {
-                        if (err) {
-                            reject(err);
-                        }
-                        else {
-                            resolve([file, stats.isFile()]);
-                        }
-                    });
-                }
+        function exists(file) {
+            return new Promise(function (resolve, reject) {
+                fs.access(file, function (errAccess) {
+                    if (errAccess) {
+                        resolve([file, false]);
+                    }
+                    else {
+                        fs.stat(file, function (err, stats) {
+                            if (err) {
+                                reject(err);
+                            }
+                            else {
+                                resolve([file, stats.isFile()]);
+                            }
+                        });
+                    }
+                });
             });
-        });
+        }
     }
     function commonPath(path1, path2) {
         var commonPath = "";
