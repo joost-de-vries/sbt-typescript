@@ -16,7 +16,7 @@
     "typings/browser.d.ts",
     "typings/main",
     "typings/main.d.ts",
-    "example",
+    "test",
     "src/sbt-test"
   ]
 }

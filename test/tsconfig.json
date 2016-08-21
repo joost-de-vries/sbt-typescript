@@ -4,6 +4,8 @@
     "module": "system",
     "emitDecoratorMetadata": true,
     "experimentalDecorators":true,
+    "sourceMap": true,
+    "mapRoot": "/assets",
     "rootDirs": ["src/main/assets","src/test/assets"],
     "baseUrl": ".",
     "paths": {
