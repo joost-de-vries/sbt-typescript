@@ -3,6 +3,7 @@ This sbt plugin compiles the Typescript code in your Play application to javascr
 
 ###Getting started
 The easiest way to get started is to use the [Play - Angular2 - Typescript demo project](https://github.com/joost-de-vries/play-angular2-typescript).
+See the [Typescript 2.0 Handbook](https://github.com/Microsoft/TypeScript-Handbook/blob/master/pages/Compiler%20Options.md) for `tsc` options to use in your `tsconfig.json`.
   
 ###Features
 The aim of this plugin is to make it easy to write Angular2 applications using the Play framework.  
