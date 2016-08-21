@@ -20,7 +20,8 @@ libraryDependencies ++= Seq(
   "org.webjars.npm" % "typescript" % "2.0.0",
   "org.webjars.npm" % "minimatch" % "3.0.0",
   "org.webjars.npm" % "fs-extra" % "0.26.6",
-  "org.webjars.npm" % "es6-shim" % "0.35.1"
+  "org.webjars.npm" % "es6-shim" % "0.35.1",
+  "org.webjars" % "npm" % "3.9.3"
 )
 
 resolvers ++= Seq(
@@ -31,6 +32,7 @@ resolvers ++= Seq(
 )
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-js-engine" % "1.1.4")
+addSbtPlugin("com.typesafe.sbt" % "sbt-web" % "1.4.0")
 
 publishMavenStyle := false
 bintrayRepository in bintray := "sbt-plugins"
