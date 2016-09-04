@@ -14,7 +14,7 @@ As such it
   - Also it allows setting of all `tsc` options. Even the undocumented ones. 
   - And it allows you to switch between `sbt-typescript` and `tsc`.
  - [x] allows resolution of module imports against webjars. Since every Angular2 application uses ES6 module imports this is obviously an important requirement.
- - [x] allows for including typings files in the build. This is essential for compilation to ES5 because the standard ES5 lib doesn't have some types that f.i. Angular2 needs. These types are offered for ES5 by ao ES6-shims.
+ - [x] ~allows for including typings files in the build. This is essential for compilation to ES5 because the standard ES5 lib doesn't have some types that f.i. Angular2 needs. These types are offered for ES5 by ao ES6-shims.~  Typings are obsolete: thankfully typescript type definitions are delivered now by plain npm.
  - [x] allows for suppression of compilation errors. This may seem strange to people coming from conventional statically typed languages. But the `tsc` lives in an untyped world. So it _will_ emit perfectly functional code even if some types can't be checked. Suppression of a specific error is particularly useful if one's using a library for which type information is not available. 
  - [x] supports writing unittests in typescript
  - [x] uses Typescript 2.0
