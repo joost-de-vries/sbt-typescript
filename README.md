@@ -1,7 +1,11 @@
 #sbt-typescript [![Build Status](https://travis-ci.org/joost-de-vries/sbt-typescript.png?branch=master)](https://travis-ci.org/joost-de-vries/sbt-typescript)
-This sbt plugin compiles the Typescript code in your Play application to javascript fit for consumption by your average browser and device.  
+This sbt plugin compiles the Typescript code in your Play application to javascript fit for consumption by your average browser and device. It's especially aimed at Angular2 applications.  
+
+###Getting started
+The easiest way to get started is to use the [Play - Angular2 - Typescript demo project](https://github.com/joost-de-vries/play-angular2-typescript).
+See the [Typescript 2.0 Handbook](https://github.com/Microsoft/TypeScript-Handbook/blob/master/pages/Compiler%20Options.md) for `tsc` options to use in your `tsconfig.json`.
   
-###introduction
+###Features
 The aim of this plugin is to make it easy to write Angular2 applications using the Play framework.  
 As such it
  - [x] allows transpiling to a single output file. This is important for large applications. At least for as long as http2 isn't prevalent.
@@ -10,7 +14,7 @@ As such it
   - Also it allows setting of all `tsc` options. Even the undocumented ones. 
   - And it allows you to switch between `sbt-typescript` and `tsc`.
  - [x] allows resolution of module imports against webjars. Since every Angular2 application uses ES6 module imports this is obviously an important requirement.
- - [x] allows for including typings files in the build. This is essential for compilation to ES5 because the standard ES5 lib doesn't have some types that f.i. Angular2 needs. These types are offered for ES5 by ao ES6-shims.
+ - [x] ~allows for including typings files in the build. This is essential for compilation to ES5 because the standard ES5 lib doesn't have some types that f.i. Angular2 needs. These types are offered for ES5 by ao ES6-shims.~  Typings are obsolete: thankfully typescript type definitions are delivered now by plain npm.
  - [x] allows for suppression of compilation errors. This may seem strange to people coming from conventional statically typed languages. But the `tsc` lives in an untyped world. So it _will_ emit perfectly functional code even if some types can't be checked. Suppression of a specific error is particularly useful if one's using a library for which type information is not available. 
  - [x] supports writing unittests in typescript
  - [x] uses Typescript 2.0
@@ -19,7 +23,7 @@ As such it
 ###getting started with Typescript and Angular2
 I've made an activator tutorial template to get you started. If you have activator installed you can run `activator new play-angular2-typescript`.  Or you can just clone the [repo](https://github.com/joost-de-vries/play-angular2-typescript).  
  
-###configuring
+###Configuring
 Create a `tsconfig.json` file in the root of your project with the required [compiler options](https://github.com/Microsoft/TypeScript/wiki/Compiler-Options).  
 Add the following line to your `project\plugins.sbt`:
 
@@ -29,20 +33,20 @@ If your project is not a Play application it will have to enable `sbt-web` in `b
 
     lazy val root = (project in file(".")).enablePlugins(SbtWeb)
 
-####configuring an IDE
+####Configuring an IDE
 If you want to use an IDE like IntelliJ you can use the task `sbt setupTscCompilation`. At this point that copies the npm webjars to `<base-dir>/node_modules`. Then you can point the IDE to your `tsconfig.json`.
+
+Make sure `tsc` is configured to find the locations of the npm webjars. See the example repo for the `tsconfig.json` configurations to use.
     
-####compiling to a single js file
+####Compiling to a single js file
 You can develop using individual javascript files when running `sbt ~run` in Play and have your whole typescript application concatenated into a single javascript output file for your stage environment without changes to your sources. To do that you have to add a `-DtsCompileMode=stage` parameter to the sbt task in your CI that creates the stage app. So for Play that will often be `sbt stage -DtsCompileMode=stage`.  
     
-####typings
-If you have a [typings](https://github.com/typings/typings) file you can add it like this:
+####Type declarations
+You can just import type declarations as npm packages from `@types`. For example `@types/jasmine`.
 
-    typingsFile := Some(baseDirectory.value / "typings" / "browser.d.ts")
-    
-See `src/sbt-test/sbt-typescript/es6-es5` for an example.  
+Typings are deprecated.
 
-####resolve against webjar npms
+####Resolve against webjar npms
 If you want to resolve modules against [webjar npm](http://www.webjars.org/npm)s:
 
     resolveFromWebjarsNodeModulesDir := true

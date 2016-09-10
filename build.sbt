@@ -7,11 +7,16 @@ homepage := Some(url("https://github.com/joost-de-vries/sbt-typescript"))
 licenses +=("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
 
 scalaVersion := "2.10.6"
+javacOptions ++= Seq(
+  "-source", "1.7",
+  "-target", "1.7"
+)
 scalacOptions ++= Seq(
   "-feature",
   "-encoding", "UTF8",
   "-deprecation",
   "-unchecked",
+  "-target:jvm-1.7",
   "-Xlint",
   "-Ywarn-dead-code",
   "-Ywarn-adapted-args"
