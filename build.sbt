@@ -1,7 +1,7 @@
 sbtPlugin := true
 organization := "name.de-vries"
 name := "sbt-typescript"
-version := "0.3.0-beta.3"
+version := "0.3.0-beta.4"
 
 homepage := Some(url("https://github.com/joost-de-vries/sbt-typescript"))
 licenses +=("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
@@ -22,6 +22,10 @@ scalacOptions ++= Seq(
   "-Ywarn-adapted-args"
 )
 libraryDependencies ++= Seq(
+  "org.webjars" % "webjars-locator" % "0.32",
+  "org.webjars" % "webjars-locator-core" % "0.31",
+
+  // js dependencies
   "org.webjars.npm" % "typescript" % "2.0.2",
   "org.webjars.npm" % "minimatch" % "3.0.0",
   "org.webjars.npm" % "fs-extra" % "0.26.6",
