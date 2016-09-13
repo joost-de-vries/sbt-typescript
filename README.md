@@ -65,7 +65,10 @@ The following `tsc` compiler options are managed by `sbt-typescript` so setting 
 If you use the `stage` compile mode the `outFile` option is also managed by `sbt-typescript`.  
 
 ##release notes
-#### v0.3.0-beta.2
+#### v0.3.0-beta.4
+- solves an issue (#9) where RxJs would be extracted to the wrong directory. 
+
+#### v0.3.0-beta.3
 - uses typescript 2.0 RC (npm 2.0.2)
 
 #### v0.3.0-beta.2
