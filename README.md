@@ -27,7 +27,7 @@ I've made an activator tutorial template to get you started. If you have activat
 Create a `tsconfig.json` file in the root of your project with the required [compiler options](https://github.com/Microsoft/TypeScript/wiki/Compiler-Options).  
 Add the following line to your `project\plugins.sbt`:
 
-    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.3.0-beta.4")
+    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.3.0-beta.5")
 
 If your project is not a Play application it will have to enable `sbt-web` in `build.sbt`:
 
@@ -65,6 +65,10 @@ The following `tsc` compiler options are managed by `sbt-typescript` so setting 
 If you use the `stage` compile mode the `outFile` option is also managed by `sbt-typescript`.  
 
 ##release notes
+
+#### v0.3.0-beta.5
+- solves an issue (#9) where RxJs would cause a nullpointer. 
+
 #### v0.3.0-beta.4
 - solves an issue (#9) where RxJs would be extracted to the wrong directory. 
 
