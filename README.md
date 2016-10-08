@@ -68,6 +68,7 @@ If you use the `stage` compile mode the `outFile` option is also managed by `sbt
 
 #### v0.3.0-beta.5
 - solves an issue (#9) where RxJs would cause a nullpointer. 
+- uses typescript 2.0.3
 
 #### v0.3.0-beta.4
 - solves an issue (#9) where RxJs would be extracted to the wrong directory. 
