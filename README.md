@@ -66,6 +66,9 @@ If you use the `stage` compile mode the `outFile` option is also managed by `sbt
 
 ##release notes
 
+#### v0.3.0-beta.6
+- upgrades to typescript 2.0.6
+
 #### v0.3.0-beta.5
 - solves an issue (#9) where RxJs would cause a nullpointer. 
 - uses typescript 2.0.3
