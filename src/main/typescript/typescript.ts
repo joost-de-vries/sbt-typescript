@@ -47,7 +47,8 @@ function compile(sourceMaps: SourceMappings, sbtOptions: SbtTypescriptOptions, t
 
         let nodeModulesPaths: string[] = []
         if (sbtOptions.resolveFromNodeModulesDir) {
-            nodeModulesPaths = sbtOptions.nodeModulesDirs.map(p => p + "/*")
+            nodeModulesPaths = nodeModulesPaths.concat(sbtOptions.nodeModulesDirs.map(p => p + "/*"))
+            nodeModulesPaths = nodeModulesPaths.concat(sbtOptions.nodeModulesDirs.map(p => p + "/@types/*"))
         }
 
         const assetPaths = sbtOptions.assetsDirs.map(p => p + "/*")
@@ -256,12 +257,12 @@ function toCompilationResult(sourceMappings: SourceMappings, compilerOptions: Co
             // logger.debug("source file is ",sourceFile.fileName)
             let deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(f => f.fileName))
 
-            let outputFile = determineOutFile(sm.toOutputPath(compilerOptions.outDir, ".js"), compilerOptions)
+            let outputFile = determineOutFile(sm.toOutputPath(compilerOptions.outDir!, ".js"), compilerOptions)
 
             let filesWritten = [outputFile]
 
             if (compilerOptions.declaration) {
-                let outputFileDeclaration = sm.toOutputPath(compilerOptions.outDir, ".d.ts")
+                let outputFileDeclaration = sm.toOutputPath(compilerOptions.outDir!, ".d.ts")
                 filesWritten.push(outputFileDeclaration)
             }
 

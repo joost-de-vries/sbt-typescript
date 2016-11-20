@@ -162,7 +162,8 @@ function compile(sourceMaps, sbtOptions, target) {
         compilerOptions.outDir = target;
         var nodeModulesPaths = [];
         if (sbtOptions.resolveFromNodeModulesDir) {
-            nodeModulesPaths = sbtOptions.nodeModulesDirs.map(function (p) { return p + "/*"; });
+            nodeModulesPaths = nodeModulesPaths.concat(sbtOptions.nodeModulesDirs.map(function (p) { return p + "/*"; }));
+            nodeModulesPaths = nodeModulesPaths.concat(sbtOptions.nodeModulesDirs.map(function (p) { return p + "/@types/*"; }));
         }
         var assetPaths = sbtOptions.assetsDirs.map(function (p) { return p + "/*"; });
         compilerOptions.baseUrl = ".";

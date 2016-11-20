@@ -12,7 +12,7 @@
     "noFallthroughCasesInSwitch":true,
     "preserveConstEnums": true,
     "noImplicitThis": true,
-    "strictNullChecks": true,
+    "strictNullChecks": true
   },
   "exclude": [
     "node_modules",
