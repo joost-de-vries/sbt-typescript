@@ -68,6 +68,7 @@ If you use the `stage` compile mode the `outFile` option is also managed by `sbt
 
 #### v0.3.0-beta.7
 - upgrades to typescript 2.1 RC (npm 2.1.1)
+- resolves webjar @types type definitions
 
 #### v0.3.0-beta.6
 - upgrades to typescript 2.0.6
