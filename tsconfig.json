@@ -1,21 +1,21 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "noImplicitAny": true,
     "removeComments": true,
-    "preserveConstEnums": true,
     "sourceMap": false,
+    "rootDir": "src/main/typescript",
+    "outDir": "./src/main/resources",
+    "lib": ["es6"],
+    "noImplicitAny": true,
     "noImplicitReturns": true,
     "noEmitOnError": true,
     "noFallthroughCasesInSwitch":true,
-    "outDir": "./src/main/resources"
+    "preserveConstEnums": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
   },
   "exclude": [
     "node_modules",
-    "typings/browser",
-    "typings/browser.d.ts",
-    "typings/main",
-    "typings/main.d.ts",
     "test",
     "src/sbt-test"
   ]

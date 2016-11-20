@@ -1,6 +1,5 @@
 /* global process, require */
 /// <reference path="./internal.ts" />
-/// <reference path="../../../typings/main.d.ts" />
 import {
     Program,
     Diagnostic,
@@ -16,7 +15,7 @@ import {
     sys
 } from "typescript"
 
-const fs = require("fs-extra")
+import * as fs from "fs-extra"
 
 const args: Args = parseArgs(process.argv)
 const sbtTypescriptOpts: SbtTypescriptOptions = args.options
