@@ -49,4 +49,4 @@ bintrayOrganization in bintray := None
 bintrayVcsUrl := Some("git@github.com:joost-de-vries/sbt-typescript.git")
 
 scriptedSettings
-scriptedLaunchOpts <+= version apply { v => s"-Dproject.version=$v" }
+scriptedLaunchOpts += s"-Dproject.version=${version.value}"
