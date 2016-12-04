@@ -1,9 +1,11 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "module": "system",
+    "module": "commonjs",
+    "moduleResolution": "node",
     "emitDecoratorMetadata": true,
     "experimentalDecorators":true,
+    "noEmitOnError": true,
     "sourceMap": true,
     "mapRoot": "/assets",
     "rootDirs": ["src/main/assets","src/test/assets"],

@@ -1,17 +1,20 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "module": "system",
+    "module": "commonjs",
     "emitDecoratorMetadata": true,
     "experimentalDecorators":true,
+    "noEmitOnError": true,
     "sourceMap": true,
+    "declaration": true,
     "mapRoot": "/assets",
     "rootDirs": ["src/main/assets","src/test/assets"],
     "baseUrl": ".",
     "paths": {
       "*": [
         "*",
-        "target/web/web-modules/main/webjars/lib/*"
+        "target/web/node-modules/main/webjars/*",
+        "target/web/node-modules/main/webjars/lib/*"
       ]
     },
     "outDir": "./target/tsc"

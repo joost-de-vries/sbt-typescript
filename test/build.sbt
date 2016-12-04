@@ -2,22 +2,22 @@
 
 
 lazy val root = (project in file(".")).enablePlugins(SbtWeb)
+  .aggregate(web, common)
 
-JsEngineKeys.engineType := JsEngineKeys.EngineType.Node
+lazy val common = (project in file("modules/common"))
+  .enablePlugins(SbtWeb)
+  .settings(commonSettings)
 
-logLevel in typescript := Level.Debug
+lazy val web = (project in file("modules/web"))
+  .enablePlugins(SbtWeb)
+  .settings(commonSettings)
+  .dependsOn(common)
 
-assertCompilation in typescript := true
-
-libraryDependencies ++= Seq(
-  "org.webjars.npm" % "angular2" % "2.0.0-beta.7",
-  "org.webjars.npm" % "systemjs" % "0.19.20",
-  "org.webjars.npm" % "rxjs" % "5.0.0-beta.2",
-  "org.webjars.npm" % "es6-promise" % "3.0.2",
-  "org.webjars.npm" % "es6-shim" % "0.34.1",
-  "org.webjars.npm" % "reflect-metadata" % "0.1.2",
-  "org.webjars.npm" % "zone.js" % "0.5.15"
+lazy val commonSettings = Seq(
+JsEngineKeys.engineType := JsEngineKeys.EngineType.Node,
+logLevel in typescript  := Level.Debug,
+assertCompilation in typescript := true,
+  resolveFromWebjarsNodeModulesDir := true
 )
 
-typingsFile := Some(baseDirectory.value / "typings" / "browser.d.ts")
-resolveFromWebjarsNodeModulesDir := true
+
