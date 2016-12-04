@@ -11,6 +11,10 @@ javacOptions ++= Seq(
   "-source", "1.7",
   "-target", "1.7"
 )
+
+incOptions := incOptions.value.withNameHashing(true)
+updateOptions := updateOptions.value.withCachedResolution(cachedResoluton = true)
+
 scalacOptions ++= Seq(
   "-feature",
   "-encoding", "UTF8",
@@ -21,15 +25,20 @@ scalacOptions ++= Seq(
   "-Ywarn-dead-code",
   "-Ywarn-adapted-args"
 )
+
 libraryDependencies ++= Seq(
-  "org.webjars" % "webjars-locator" % "0.32",
-  "org.webjars" % "webjars-locator-core" % "0.32",
 
   // js dependencies
   "org.webjars.npm" % "typescript" % "2.1.1",
   "org.webjars.npm" % "minimatch" % "3.0.0",
   "org.webjars.npm" % "fs-extra" % "0.26.6",
-  "org.webjars.npm" % "es6-shim" % "0.35.1",
+  "org.webjars.npm" % "es6-shim" % "0.35.1"
+)
+
+dependencyOverrides ++= Set(
+  "org.webjars" % "webjars-locator" % "0.32",
+  "org.webjars" % "webjars-locator-core" % "0.32",
+
   "org.webjars" % "npm" % "3.9.3"
 )
 

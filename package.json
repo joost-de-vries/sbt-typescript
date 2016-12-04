@@ -1,0 +1,16 @@
+{
+  "scripts": {
+    "build": "tsc -p .",
+    "build:watch": "tsc -p . -w",
+    "clean": "rimraf src/main/resources"
+  },
+  "dependencies": {
+    "fs-extra": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "0.0.35",
+    "@types/node": "^6.0.51",
+    "typescript": "2.1.1",
+    "rimraf": "^2.5.4"
+  }
+}

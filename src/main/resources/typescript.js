@@ -217,7 +217,8 @@ function compile(sourceMaps, sbtOptions, target) {
             else {
                 logger.debug("all declared files exist");
             }
-        })["catch"](function (err) { return logger.error("unexpected error", err); });
+        })
+            .catch(function (err) { return logger.error("unexpected error", err); });
         if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
             var errorMessage = "\nemitted and declared files are not equal\nemitted but not declared " + emittedButNotDeclared + "\ndeclared but not emitted " + declaredButNotEmitted + "\n";
             throw new Error(errorMessage);
