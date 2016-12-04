@@ -205,10 +205,11 @@ function compile(sourceMaps, sbtOptions, target) {
     return output;
     function logAndAssertEmitted(declaredResults, emitOutput) {
         var ffw = flatFilesWritten(declaredResults);
+        var emitted = emitOutput.emitSkipped ? [] : emitOutput.emittedFiles;
         logger.debug("files written", ffw);
-        logger.debug("files emitted", emitOutput.emittedFiles);
-        var emittedButNotDeclared = minus(emitOutput.emittedFiles, ffw);
-        var declaredButNotEmitted = minus(ffw, emitOutput.emittedFiles);
+        logger.debug("files emitted", emitted);
+        var emittedButNotDeclared = minus(emitted, ffw);
+        var declaredButNotEmitted = minus(ffw, emitted);
         notExistingFiles(ffw)
             .then(function (nef) {
             if (nef.length > 0) {
@@ -221,7 +222,8 @@ function compile(sourceMaps, sbtOptions, target) {
             .catch(function (err) { return logger.error("unexpected error", err); });
         if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
             var errorMessage = "\nemitted and declared files are not equal\nemitted but not declared " + emittedButNotDeclared + "\ndeclared but not emitted " + declaredButNotEmitted + "\n";
-            throw new Error(errorMessage);
+            if (!emitOutput.emitSkipped)
+                throw new Error(errorMessage);
         }
         return;
         function minus(arr1, arr2) {
