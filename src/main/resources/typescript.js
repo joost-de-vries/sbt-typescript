@@ -148,7 +148,7 @@ var sourceMappings = new SourceMappings(args.sourceFileMappings);
 logger.debug("starting compilation of ", sourceMappings.mappings.map(function (sm) { return sm.relativePath; }));
 logger.debug("from ", sbtTypescriptOpts.assetsDirs);
 logger.debug("to ", args.target);
-logger.debug("args ", args);
+logger.debug("args " + JSON.stringify(args, null, 2));
 var compileResult = compile(sourceMappings, sbtTypescriptOpts, args.target);
 compileDone(compileResult);
 function compile(sourceMaps, sbtOptions, target) {
@@ -295,7 +295,7 @@ function compile(sourceMaps, sbtOptions, target) {
     function toCompilerOptions(sbtOptions) {
         var unparsedCompilerOptions = sbtOptions.tsconfig["compilerOptions"];
         if (unparsedCompilerOptions.outFile) {
-            var outFile = path.join(target, path.basename(unparsedCompilerOptions.outFile));
+            var outFile = path.join(target, unparsedCompilerOptions.outFile);
             logger.debug("single outFile ", outFile);
             unparsedCompilerOptions.outFile = outFile;
         }
@@ -394,7 +394,7 @@ function parseDiagnostic(d) {
         fileName = d.file.fileName;
     }
     var problem = {
-        lineNumber: lineCol.line,
+        lineNumber: lineCol.line + 1,
         characterOffset: lineCol.character,
         message: "TS" + d.code + " " + typescript_1.flattenDiagnosticMessageText(d.messageText, typescript_1.sys.newLine),
         source: fileName,

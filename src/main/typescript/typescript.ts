@@ -26,7 +26,7 @@ const sourceMappings = new SourceMappings(args.sourceFileMappings)
 logger.debug("starting compilation of ", sourceMappings.mappings.map((sm) => sm.relativePath))
 logger.debug("from ", sbtTypescriptOpts.assetsDirs)
 logger.debug("to ", args.target)
-logger.debug("args ", args)
+logger.debug("args "+ JSON.stringify( args,null,2))
 
 const compileResult = compile(sourceMappings, sbtTypescriptOpts, args.target)
 
@@ -211,7 +211,7 @@ declared but not emitted ${declaredButNotEmitted}
         const unparsedCompilerOptions: any = sbtOptions.tsconfig["compilerOptions"]
         // logger.debug("compilerOptions ", unparsedCompilerOptions)
         if (unparsedCompilerOptions.outFile) {
-            const outFile = path.join(target, path.basename(unparsedCompilerOptions.outFile))
+            const outFile = path.join(target, unparsedCompilerOptions.outFile)
             logger.debug("single outFile ", outFile)
             unparsedCompilerOptions.outFile = outFile
         }
@@ -323,7 +323,7 @@ function parseDiagnostic(d: Diagnostic): Problem {
     }
 
     let problem = <Problem>{
-        lineNumber: lineCol.line,
+        lineNumber: lineCol.line + 1,
         characterOffset: lineCol.character,
         message: "TS" + d.code + " " + flattenDiagnosticMessageText(d.messageText, sys.newLine),
         source: fileName,
