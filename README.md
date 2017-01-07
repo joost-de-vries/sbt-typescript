@@ -66,6 +66,9 @@ If you use the `stage` compile mode the `outFile` option is also managed by `sbt
 
 ##release notes
 
+#### v0.3.0-beta.9
+- fixes compilation of test assets
+
 #### v0.3.0-beta.8-1
 - allows configuring outfile with a path
 - makes compile errors 1 based instead of 0 based

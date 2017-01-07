@@ -69,10 +69,18 @@ function compile(sourceMaps: SourceMappings, sbtOptions: SbtTypescriptOptions, t
 
         const emitOutput = program.emit()
 
-        if (sbtOptions.assetsDirs.length === 2) {
-            moveEmittedTestAssets(sbtOptions)
-        }
+        const moveTestPromise =sbtOptions.assetsDirs.length === 2 ? moveEmittedTestAssets(sbtOptions) : Promise.resolve({})
 
+
+        moveTestPromise
+            .then((value)=>{
+                if (sbtOptions.assertCompilation) {
+                    logAndAssertEmitted(results, emitOutput)
+                }
+
+            },(e)=>{
+
+            })
         problems.push(...toProblems(emitOutput.diagnostics, sbtOptions.tsCodesToIgnore))
 
         if (logger.isDebug) {
@@ -86,9 +94,6 @@ function compile(sourceMaps: SourceMappings, sbtOptions: SbtTypescriptOptions, t
             results = []
         }
 
-        if (sbtOptions.assertCompilation) {
-            logAndAssertEmitted(results, emitOutput)
-        }
     }
 
     const output = <CompilationResult>{
@@ -123,7 +128,7 @@ emitted and declared files are not equal
 emitted but not declared ${emittedButNotDeclared}
 declared but not emitted ${declaredButNotEmitted}
 `
-            if (!emitOutput.emitSkipped) throw new Error(errorMessage)
+            if (!emitOutput.emitSkipped) logger.error(errorMessage)//throw new Error(errorMessage)
         }
 
         return
@@ -138,7 +143,7 @@ declared but not emitted ${declaredButNotEmitted}
         }
     }
 
-    function moveEmittedTestAssets(sbtOpts: SbtTypescriptOptions) {
+    function moveEmittedTestAssets(sbtOpts: SbtTypescriptOptions):Promise<any> {
         // we're compiling testassets
         // unfortunately because we have two rootdirs the paths are not being relativized to outDir
         // see https://github.com/Microsoft/TypeScript/issues/7837
@@ -150,16 +155,52 @@ declared but not emitted ${declaredButNotEmitted}
         const relPathAssets = sbtOpts.assetsDirs[0].substring(common.length)
         const relPathTestAssets = sbtOpts.assetsDirs[1].substring(common.length)
 
+        const sourcePath = path.join(target,relPathTestAssets)
+        const moveMsg = `${sourcePath} to ${target}`
         // and move the desired emitted test files up to the target path
-        // logger.debug("will remove",target+"/"+relPathAssets)
-        // logger.debug("will move contents of "+ target+"/"+relPathTestAssets+" to "+target)
-        fs.remove(target + "/" + relPathAssets, (e: any) => logger.debug("removed", target + "/" + relPathAssets))
-        fs.copy(target + "/" + relPathTestAssets, target, (e: any) => {
-            logger.debug("moved contents of " + target + "/" + relPathTestAssets + " to " + target)
-            fs.remove(target + "/" + relPathTestAssets, (e: any) => true)
+        //logger.debug("will remove",target+"/"+relPathAssets)
+        //logger.debug(`will move contents of ${moveMsg}`)
+        // fs.remove(target + "/" + relPathAssets, (e: any) => logger.debug("removed", target + "/" + relPathAssets))
+        // fs.copy(sourcePath, target, (e: any) => {
+        //     logger.debug(`moved contents of ${moveMsg} ${e}`)
+        //     fs.remove(target + "/" + relPathTestAssets, (e: any) => true)
+        // })
+        return Promise.all([remove(path.join(target,relPathAssets)),move(sourcePath,target)])
+    }
+
+    function remove(dir:string):Promise<any>{
+        return new Promise((resolve,reject)=>{
+            fs.remove(dir, (e:any)=>{
+                if(e){
+                    reject(e)
+                }
+                else {
+                    logger.debug("removed", dir)
+                    resolve({})
+                }
+            })
         })
     }
 
+    function move(sourcePath:string,target:string):Promise<any>{
+        return new Promise((resolve,reject)=>{
+            fs.copy(sourcePath, target, (e: any) => {
+                if(e){
+                    reject(e)
+                }
+                else {
+                    fs.remove(sourcePath, (e: any) =>{
+                        if(e){
+                            reject(e)
+                        }else{
+                            logger.debug(`moved contents of ${sourcePath} to ${target}`)
+                            resolve({})
+                        }
+                    })
+                }
+            })
+        })
+    }
     function notExistingFiles(filesDeclared: string[]): Promise<string[]> {
         return Promise.all(filesDeclared.map(exists))
             .then((e: [string, boolean][]) => {

@@ -179,23 +179,25 @@ function compile(sourceMaps, sbtOptions, target) {
         var program = typescript_1.createProgram(filesToCompile, compilerOptions, compilerHost);
         logger.debug("created program");
         problems.push.apply(problems, findPreemitProblems(program, sbtOptions.tsCodesToIgnore));
-        var emitOutput = program.emit();
-        if (sbtOptions.assetsDirs.length === 2) {
-            moveEmittedTestAssets(sbtOptions);
-        }
-        problems.push.apply(problems, toProblems(emitOutput.diagnostics, sbtOptions.tsCodesToIgnore));
+        var emitOutput_1 = program.emit();
+        var moveTestPromise = sbtOptions.assetsDirs.length === 2 ? moveEmittedTestAssets(sbtOptions) : Promise.resolve({});
+        moveTestPromise
+            .then(function (value) {
+            if (sbtOptions.assertCompilation) {
+                logAndAssertEmitted(results, emitOutput_1);
+            }
+        }, function (e) {
+        });
+        problems.push.apply(problems, toProblems(emitOutput_1.diagnostics, sbtOptions.tsCodesToIgnore));
         if (logger.isDebug) {
             var declarationFiles = program.getSourceFiles().filter(isDeclarationFile);
             logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.");
         }
-        if (!emitOutput.emitSkipped) {
+        if (!emitOutput_1.emitSkipped) {
             results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions)));
         }
         else {
             results = [];
-        }
-        if (sbtOptions.assertCompilation) {
-            logAndAssertEmitted(results, emitOutput);
         }
     }
     var output = {
@@ -223,7 +225,7 @@ function compile(sourceMaps, sbtOptions, target) {
         if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
             var errorMessage = "\nemitted and declared files are not equal\nemitted but not declared " + emittedButNotDeclared + "\ndeclared but not emitted " + declaredButNotEmitted + "\n";
             if (!emitOutput.emitSkipped)
-                throw new Error(errorMessage);
+                logger.error(errorMessage);
         }
         return;
         function minus(arr1, arr2) {
@@ -241,10 +243,41 @@ function compile(sourceMaps, sbtOptions, target) {
         var common = commonPath(sbtOpts.assetsDirs[0], sbtOpts.assetsDirs[1]);
         var relPathAssets = sbtOpts.assetsDirs[0].substring(common.length);
         var relPathTestAssets = sbtOpts.assetsDirs[1].substring(common.length);
-        fs.remove(target + "/" + relPathAssets, function (e) { return logger.debug("removed", target + "/" + relPathAssets); });
-        fs.copy(target + "/" + relPathTestAssets, target, function (e) {
-            logger.debug("moved contents of " + target + "/" + relPathTestAssets + " to " + target);
-            fs.remove(target + "/" + relPathTestAssets, function (e) { return true; });
+        var sourcePath = path.join(target, relPathTestAssets);
+        var moveMsg = sourcePath + " to " + target;
+        return Promise.all([remove(path.join(target, relPathAssets)), move(sourcePath, target)]);
+    }
+    function remove(dir) {
+        return new Promise(function (resolve, reject) {
+            fs.remove(dir, function (e) {
+                if (e) {
+                    reject(e);
+                }
+                else {
+                    logger.debug("removed", dir);
+                    resolve({});
+                }
+            });
+        });
+    }
+    function move(sourcePath, target) {
+        return new Promise(function (resolve, reject) {
+            fs.copy(sourcePath, target, function (e) {
+                if (e) {
+                    reject(e);
+                }
+                else {
+                    fs.remove(sourcePath, function (e) {
+                        if (e) {
+                            reject(e);
+                        }
+                        else {
+                            logger.debug("moved contents of " + sourcePath + " to " + target);
+                            resolve({});
+                        }
+                    });
+                }
+            });
         });
     }
     function notExistingFiles(filesDeclared) {

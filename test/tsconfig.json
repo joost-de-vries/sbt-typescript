@@ -1,12 +1,19 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "module": "system",
+    "module": "commonjs",
     "emitDecoratorMetadata": true,
-    "experimentalDecorators":true,
+    "experimentalDecorators": true,
+    "noEmitOnError": true,
     "sourceMap": true,
+    "lib": [
+      "es6"
+    ],
     "mapRoot": "/assets",
-    "rootDirs": ["src/main/assets","src/test/assets"],
+    "rootDirs": [
+      "src/main/assets",
+      "src/test/assets"
+    ],
     "baseUrl": ".",
     "paths": {
       "*": [
