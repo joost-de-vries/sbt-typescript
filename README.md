@@ -66,6 +66,10 @@ If you use the `stage` compile mode the `outFile` option is also managed by `sbt
 
 ##release notes
 
+#### v0.4.0-alfa.1
+- supports multi project builds. Uses sbt-web webModules for js deps resolution instead of nodeModules. 
+Hence the alfa moniker to see whether f.i. @types resolution still works.
+
 #### v0.3.0-beta.9
 - fixes compilation of test assets
 
