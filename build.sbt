@@ -29,7 +29,7 @@ scalacOptions ++= Seq(
 libraryDependencies ++= Seq(
 
   // js dependencies
-  "org.webjars.npm" % "typescript" % "2.1.1",
+  "org.webjars.npm" % "typescript" % "2.1.4",
   "org.webjars.npm" % "minimatch" % "3.0.0",
   "org.webjars.npm" % "fs-extra" % "0.26.6",
   "org.webjars.npm" % "es6-shim" % "0.35.1"
@@ -59,3 +59,4 @@ bintrayVcsUrl := Some("git@github.com:joost-de-vries/sbt-typescript.git")
 
 scriptedSettings
 scriptedLaunchOpts += s"-Dproject.version=${version.value}"
+scriptedBufferLog := false

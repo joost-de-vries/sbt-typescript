@@ -3,14 +3,14 @@ package name.devries.sbt.typescript
 
 import com.typesafe.sbt.jse.JsEngineImport.JsEngineKeys
 import com.typesafe.sbt.jse.SbtJsTask
-import com.typesafe.sbt.web.PathMapping
-import com.typesafe.sbt.web.pipeline.Pipeline
-import sbt.{File, _}
-import sbt.Keys._
-import spray.json.{JsArray, JsString, _}
 import com.typesafe.sbt.jse.SbtJsTask.autoImport.JsTaskKeys._
 import com.typesafe.sbt.web.Import.WebKeys._
+import com.typesafe.sbt.web.PathMapping
 import com.typesafe.sbt.web.SbtWeb.autoImport._
+import com.typesafe.sbt.web.pipeline.Pipeline
+import sbt.Keys._
+import sbt.{File, _}
+import spray.json.{JsArray, JsString, _}
 
 
 /** typescript compilation can run during 'sbt assets' compilation or during Play 'sbt stage' as a sbt-web pipe */
@@ -75,6 +75,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
   )
 
   override def projectSettings = Seq(
+    // default settings
     tsCodesToIgnore := List.empty[Int],
     projectFile := baseDirectory.value / "tsconfig.json",
     typingsFile := None,
@@ -123,6 +124,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     Seq(
       includeFilter := GlobFilter("*.ts") | GlobFilter("*.tsx"),
       excludeFilter := GlobFilter("*.d.ts"),
+      // the options that we provide to our js task
       jsOptions := JsObject(Map(
         "logLevel" -> JsString(logLevel.value.toString),
         "tsconfig" -> parseTsConfig().value,
@@ -139,16 +141,14 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
         "runMode" -> JsString(getCompileMode.value.toString),
         "assertCompilation" -> JsBoolean(assertCompilation.value)
       ) ++ optionalFields(Map(
-        "extraFiles" -> typingsFile.value.map(tf => JsArray(JsString(tf.getCanonicalPath))),
-        "stageOutFile" -> {
-          if (getCompileMode.value == CompileMode.Stage) Some(JsString(outFile.value)) else None
-        }
+        "extraFiles" -> typingsFile.value.map(tf => JsArray(JsString(tf.getCanonicalPath)))
       )
       )
       ).toString()
     )
   }
 
+  /** a convenience task to copy webjar npms to the standard ./node_modules directory */
   def setupTsCompilationTask() = Def.task {
     def copyPairs(baseDir: File, modules: Seq[File]): Seq[(File, File)] = {
       modules
@@ -171,6 +171,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     ()
   }
 
+  /** parse our tsconfig.json and replace the properties that we manage. Ie outDir viz outFile */
   def parseTsConfig() = Def.task {
 
     def removeComments(string: String) = {

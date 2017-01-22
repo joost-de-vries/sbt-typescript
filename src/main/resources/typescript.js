@@ -148,7 +148,7 @@ var sourceMappings = new SourceMappings(args.sourceFileMappings);
 logger.debug("starting compilation of ", sourceMappings.mappings.map(function (sm) { return sm.relativePath; }));
 logger.debug("from ", sbtTypescriptOpts.assetsDirs);
 logger.debug("to ", args.target);
-logger.debug("args ", args);
+logger.debug("args " + JSON.stringify(args, null, 2));
 var compileResult = compile(sourceMappings, sbtTypescriptOpts, args.target);
 compileDone(compileResult);
 function compile(sourceMaps, sbtOptions, target) {
@@ -179,23 +179,25 @@ function compile(sourceMaps, sbtOptions, target) {
         var program = typescript_1.createProgram(filesToCompile, compilerOptions, compilerHost);
         logger.debug("created program");
         problems.push.apply(problems, findPreemitProblems(program, sbtOptions.tsCodesToIgnore));
-        var emitOutput = program.emit();
-        if (sbtOptions.assetsDirs.length === 2) {
-            moveEmittedTestAssets(sbtOptions);
-        }
-        problems.push.apply(problems, toProblems(emitOutput.diagnostics, sbtOptions.tsCodesToIgnore));
+        var emitOutput_1 = program.emit();
+        var moveTestPromise = sbtOptions.assetsDirs.length === 2 ? moveEmittedTestAssets(sbtOptions) : Promise.resolve({});
+        moveTestPromise
+            .then(function (value) {
+            if (sbtOptions.assertCompilation) {
+                logAndAssertEmitted(results, emitOutput_1);
+            }
+        }, function (e) {
+        });
+        problems.push.apply(problems, toProblems(emitOutput_1.diagnostics, sbtOptions.tsCodesToIgnore));
         if (logger.isDebug) {
             var declarationFiles = program.getSourceFiles().filter(isDeclarationFile);
             logger.debug("referring to " + declarationFiles.length + " declaration files and " + (program.getSourceFiles().length - declarationFiles.length) + " code files.");
         }
-        if (!emitOutput.emitSkipped) {
+        if (!emitOutput_1.emitSkipped) {
             results = flatten(program.getSourceFiles().filter(isCodeFile).map(toCompilationResult(sourceMaps, compilerOptions)));
         }
         else {
             results = [];
-        }
-        if (sbtOptions.assertCompilation) {
-            logAndAssertEmitted(results, emitOutput);
         }
     }
     var output = {
@@ -205,10 +207,11 @@ function compile(sourceMaps, sbtOptions, target) {
     return output;
     function logAndAssertEmitted(declaredResults, emitOutput) {
         var ffw = flatFilesWritten(declaredResults);
+        var emitted = emitOutput.emitSkipped ? [] : emitOutput.emittedFiles;
         logger.debug("files written", ffw);
-        logger.debug("files emitted", emitOutput.emittedFiles);
-        var emittedButNotDeclared = minus(emitOutput.emittedFiles, ffw);
-        var declaredButNotEmitted = minus(ffw, emitOutput.emittedFiles);
+        logger.debug("files emitted", emitted);
+        var emittedButNotDeclared = minus(emitted, ffw);
+        var declaredButNotEmitted = minus(ffw, emitted);
         notExistingFiles(ffw)
             .then(function (nef) {
             if (nef.length > 0) {
@@ -221,7 +224,8 @@ function compile(sourceMaps, sbtOptions, target) {
             .catch(function (err) { return logger.error("unexpected error", err); });
         if (emittedButNotDeclared.length > 0 || declaredButNotEmitted.length > 0) {
             var errorMessage = "\nemitted and declared files are not equal\nemitted but not declared " + emittedButNotDeclared + "\ndeclared but not emitted " + declaredButNotEmitted + "\n";
-            throw new Error(errorMessage);
+            if (!emitOutput.emitSkipped)
+                logger.error(errorMessage);
         }
         return;
         function minus(arr1, arr2) {
@@ -239,10 +243,41 @@ function compile(sourceMaps, sbtOptions, target) {
         var common = commonPath(sbtOpts.assetsDirs[0], sbtOpts.assetsDirs[1]);
         var relPathAssets = sbtOpts.assetsDirs[0].substring(common.length);
         var relPathTestAssets = sbtOpts.assetsDirs[1].substring(common.length);
-        fs.remove(target + "/" + relPathAssets, function (e) { return logger.debug("removed", target + "/" + relPathAssets); });
-        fs.copy(target + "/" + relPathTestAssets, target, function (e) {
-            logger.debug("moved contents of " + target + "/" + relPathTestAssets + " to " + target);
-            fs.remove(target + "/" + relPathTestAssets, function (e) { return true; });
+        var sourcePath = path.join(target, relPathTestAssets);
+        var moveMsg = sourcePath + " to " + target;
+        return Promise.all([remove(path.join(target, relPathAssets)), move(sourcePath, target)]);
+    }
+    function remove(dir) {
+        return new Promise(function (resolve, reject) {
+            fs.remove(dir, function (e) {
+                if (e) {
+                    reject(e);
+                }
+                else {
+                    logger.debug("removed", dir);
+                    resolve({});
+                }
+            });
+        });
+    }
+    function move(sourcePath, target) {
+        return new Promise(function (resolve, reject) {
+            fs.copy(sourcePath, target, function (e) {
+                if (e) {
+                    reject(e);
+                }
+                else {
+                    fs.remove(sourcePath, function (e) {
+                        if (e) {
+                            reject(e);
+                        }
+                        else {
+                            logger.debug("moved contents of " + sourcePath + " to " + target);
+                            resolve({});
+                        }
+                    });
+                }
+            });
         });
     }
     function notExistingFiles(filesDeclared) {
@@ -293,7 +328,7 @@ function compile(sourceMaps, sbtOptions, target) {
     function toCompilerOptions(sbtOptions) {
         var unparsedCompilerOptions = sbtOptions.tsconfig["compilerOptions"];
         if (unparsedCompilerOptions.outFile) {
-            var outFile = path.join(target, path.basename(unparsedCompilerOptions.outFile));
+            var outFile = path.join(target, unparsedCompilerOptions.outFile);
             logger.debug("single outFile ", outFile);
             unparsedCompilerOptions.outFile = outFile;
         }
@@ -392,7 +427,7 @@ function parseDiagnostic(d) {
         fileName = d.file.fileName;
     }
     var problem = {
-        lineNumber: lineCol.line,
+        lineNumber: lineCol.line + 1,
         characterOffset: lineCol.character,
         message: "TS" + d.code + " " + typescript_1.flattenDiagnosticMessageText(d.messageText, typescript_1.sys.newLine),
         source: fileName,

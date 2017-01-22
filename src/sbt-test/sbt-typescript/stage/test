@@ -1,6 +1,5 @@
 # check handling of outFile setting
 
-> checkMappings
 > webStage -DtsCompileMode="stage"
 
 $ exists target/web/public/main/main.js

@@ -14,7 +14,6 @@ import {
     flattenDiagnosticMessageText,
     sys
 } from "typescript"
-
 import * as fs from "fs-extra"
 
 const args: Args = parseArgs(process.argv)
@@ -24,10 +23,10 @@ const logger = new Logger(sbtTypescriptOpts.logLevel)
 
 const sourceMappings = new SourceMappings(args.sourceFileMappings)
 
-logger.debug("starting compilation of ", sourceMappings.mappings.map((sm)=> sm.relativePath))
+logger.debug("starting compilation of ", sourceMappings.mappings.map((sm) => sm.relativePath))
 logger.debug("from ", sbtTypescriptOpts.assetsDirs)
 logger.debug("to ", args.target)
-logger.debug("args ", args)
+logger.debug("args "+ JSON.stringify( args,null,2))
 
 const compileResult = compile(sourceMappings, sbtTypescriptOpts, args.target)
 
@@ -70,10 +69,18 @@ function compile(sourceMaps: SourceMappings, sbtOptions: SbtTypescriptOptions, t
 
         const emitOutput = program.emit()
 
-        if (sbtOptions.assetsDirs.length === 2) {
-            moveEmittedTestAssets(sbtOptions)
-        }
+        const moveTestPromise =sbtOptions.assetsDirs.length === 2 ? moveEmittedTestAssets(sbtOptions) : Promise.resolve({})
 
+
+        moveTestPromise
+            .then((value)=>{
+                if (sbtOptions.assertCompilation) {
+                    logAndAssertEmitted(results, emitOutput)
+                }
+
+            },(e)=>{
+
+            })
         problems.push(...toProblems(emitOutput.diagnostics, sbtOptions.tsCodesToIgnore))
 
         if (logger.isDebug) {
@@ -87,9 +94,6 @@ function compile(sourceMaps: SourceMappings, sbtOptions: SbtTypescriptOptions, t
             results = []
         }
 
-        if (sbtOptions.assertCompilation) {
-            logAndAssertEmitted(results, emitOutput)
-        }
     }
 
     const output = <CompilationResult>{
@@ -100,11 +104,12 @@ function compile(sourceMaps: SourceMappings, sbtOptions: SbtTypescriptOptions, t
 
     function logAndAssertEmitted(declaredResults: CompilationFileResult[], emitOutput: EmitResult) {
         const ffw = flatFilesWritten(declaredResults)
+        const emitted = emitOutput.emitSkipped ? [] : emitOutput.emittedFiles
         logger.debug("files written", ffw)
-        logger.debug("files emitted", emitOutput.emittedFiles)
+        logger.debug("files emitted", emitted)
 
-        const emittedButNotDeclared = minus(emitOutput.emittedFiles, ffw)
-        const declaredButNotEmitted = minus(ffw, emitOutput.emittedFiles)
+        const emittedButNotDeclared = minus(emitted, ffw)
+        const declaredButNotEmitted = minus(ffw, emitted)
 
         notExistingFiles(ffw)
             .then(nef => {
@@ -123,8 +128,9 @@ emitted and declared files are not equal
 emitted but not declared ${emittedButNotDeclared}
 declared but not emitted ${declaredButNotEmitted}
 `
-            throw new Error(errorMessage)
+            if (!emitOutput.emitSkipped) logger.error(errorMessage)//throw new Error(errorMessage)
         }
+
         return
         function minus(arr1: string[], arr2: string[]): string[] {
             const r: string[] = []
@@ -137,7 +143,7 @@ declared but not emitted ${declaredButNotEmitted}
         }
     }
 
-    function moveEmittedTestAssets(sbtOpts: SbtTypescriptOptions) {
+    function moveEmittedTestAssets(sbtOpts: SbtTypescriptOptions):Promise<any> {
         // we're compiling testassets
         // unfortunately because we have two rootdirs the paths are not being relativized to outDir
         // see https://github.com/Microsoft/TypeScript/issues/7837
@@ -149,37 +155,73 @@ declared but not emitted ${declaredButNotEmitted}
         const relPathAssets = sbtOpts.assetsDirs[0].substring(common.length)
         const relPathTestAssets = sbtOpts.assetsDirs[1].substring(common.length)
 
+        const sourcePath = path.join(target,relPathTestAssets)
+        const moveMsg = `${sourcePath} to ${target}`
         // and move the desired emitted test files up to the target path
-        // logger.debug("will remove",target+"/"+relPathAssets)
-        // logger.debug("will move contents of "+ target+"/"+relPathTestAssets+" to "+target)
-        fs.remove(target + "/" + relPathAssets, (e: any) => logger.debug("removed", target + "/" + relPathAssets))
-        fs.copy(target + "/" + relPathTestAssets, target, (e: any) => {
-            logger.debug("moved contents of " + target + "/" + relPathTestAssets + " to " + target)
-            fs.remove(target + "/" + relPathTestAssets, (e: any)=> true)
+        //logger.debug("will remove",target+"/"+relPathAssets)
+        //logger.debug(`will move contents of ${moveMsg}`)
+        // fs.remove(target + "/" + relPathAssets, (e: any) => logger.debug("removed", target + "/" + relPathAssets))
+        // fs.copy(sourcePath, target, (e: any) => {
+        //     logger.debug(`moved contents of ${moveMsg} ${e}`)
+        //     fs.remove(target + "/" + relPathTestAssets, (e: any) => true)
+        // })
+        return Promise.all([remove(path.join(target,relPathAssets)),move(sourcePath,target)])
+    }
+
+    function remove(dir:string):Promise<any>{
+        return new Promise((resolve,reject)=>{
+            fs.remove(dir, (e:any)=>{
+                if(e){
+                    reject(e)
+                }
+                else {
+                    logger.debug("removed", dir)
+                    resolve({})
+                }
+            })
         })
     }
 
+    function move(sourcePath:string,target:string):Promise<any>{
+        return new Promise((resolve,reject)=>{
+            fs.copy(sourcePath, target, (e: any) => {
+                if(e){
+                    reject(e)
+                }
+                else {
+                    fs.remove(sourcePath, (e: any) =>{
+                        if(e){
+                            reject(e)
+                        }else{
+                            logger.debug(`moved contents of ${sourcePath} to ${target}`)
+                            resolve({})
+                        }
+                    })
+                }
+            })
+        })
+    }
     function notExistingFiles(filesDeclared: string[]): Promise<string[]> {
         return Promise.all(filesDeclared.map(exists))
-            .then((e: [string,boolean][])=> {
-                const r: string[] = e.filter(a=> {
-                    const [s,exist]=a
+            .then((e: [string, boolean][]) => {
+                const r: string[] = e.filter(a => {
+                    const [s, exist]=a
                     return !exist
                 })
-                    .map(a=> {
-                        const [s,b]=a
+                    .map(a => {
+                        const [s, b]=a
                         return s
                     })
                 return r
 
             })
-        function exists(file: string): Promise<[string,boolean]> {
-            return new Promise<[string,boolean]>((resolve, reject)=> {
-                fs.access(file, (errAccess: any)=> {
+        function exists(file: string): Promise<[string, boolean]> {
+            return new Promise<[string, boolean]>((resolve, reject) => {
+                fs.access(file, (errAccess: any) => {
                     if (errAccess) {
                         resolve([file, false])
                     } else {
-                        fs.stat(file, (err: any, stats: any)=> {
+                        fs.stat(file, (err: any, stats: any) => {
                             if (err) {
                                 reject(err)
                             }
@@ -206,11 +248,11 @@ declared but not emitted ${declaredButNotEmitted}
         return commonPath
     }
 
-    function toCompilerOptions(sbtOptions: SbtTypescriptOptions): { options: CompilerOptions, errors: Diagnostic[] } {
+    function toCompilerOptions(sbtOptions: SbtTypescriptOptions): {options: CompilerOptions, errors: Diagnostic[]} {
         const unparsedCompilerOptions: any = sbtOptions.tsconfig["compilerOptions"]
         // logger.debug("compilerOptions ", unparsedCompilerOptions)
         if (unparsedCompilerOptions.outFile) {
-            const outFile = path.join(target, path.basename(unparsedCompilerOptions.outFile))
+            const outFile = path.join(target, unparsedCompilerOptions.outFile)
             logger.debug("single outFile ", outFile)
             unparsedCompilerOptions.outFile = outFile
         }
@@ -251,9 +293,9 @@ declared but not emitted ${declaredButNotEmitted}
     }
 }
 
-function toCompilationResult(sourceMappings: SourceMappings, compilerOptions: CompilerOptions): (sf: SourceFile)=> Option<CompilationFileResult> {
+function toCompilationResult(sourceMappings: SourceMappings, compilerOptions: CompilerOptions): (sf: SourceFile) => Option<CompilationFileResult> {
     return sourceFile => {
-        return sourceMappings.find(sourceFile.fileName).map((sm)=> {
+        return sourceMappings.find(sourceFile.fileName).map((sm) => {
             // logger.debug("source file is ",sourceFile.fileName)
             let deps = [sourceFile.fileName].concat(sourceFile.referencedFiles.map(f => f.fileName))
 
@@ -304,7 +346,7 @@ function toProblems(diagnostics: Diagnostic[], tsIgnoreList?: number[]): Problem
     else return diagnostics.map(parseDiagnostic)
 }
 
-function ignoreDiagnostic(tsIgnoreList: number[]): (d: Diagnostic)=> boolean {
+function ignoreDiagnostic(tsIgnoreList: number[]): (d: Diagnostic) => boolean {
     return (d: Diagnostic) => tsIgnoreList.indexOf(d.code) === -1
 }
 
@@ -322,7 +364,7 @@ function parseDiagnostic(d: Diagnostic): Problem {
     }
 
     let problem = <Problem>{
-        lineNumber: lineCol.line,
+        lineNumber: lineCol.line + 1,
         characterOffset: lineCol.character,
         message: "TS" + d.code + " " + flattenDiagnosticMessageText(d.messageText, sys.newLine),
         source: fileName,
