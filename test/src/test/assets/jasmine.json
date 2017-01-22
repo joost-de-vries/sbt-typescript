@@ -1,7 +1,0 @@
-{
-  "random": false,
-  "stopSpecOnExpectationFailure": false,
-  "helpers": [
-    "helpers/**/*.js"
-  ]
-}

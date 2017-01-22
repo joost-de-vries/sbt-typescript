@@ -65,6 +65,9 @@ The following `tsc` compiler options are managed by `sbt-typescript` so setting 
 If you use the `stage` compile mode the `outFile` option is also managed by `sbt-typescript`.  
 
 ##release notes
+#### v0.4.0-alfa.1
+- supports multi project builds. Uses sbt-web webModules for js deps resolution instead of nodeModules. 
+Hence the alfa moniker to see whether f.i. @types resolution still works.
 
 #### v0.4.0-alfa.1
 - supports multi project builds. Uses sbt-web webModules for js deps resolution instead of nodeModules. 

@@ -1,7 +1,7 @@
 sbtPlugin := true
 organization := "name.de-vries"
 name := "sbt-typescript"
-version := "0.3.0-beta.9"
+version := "0.4.0-alfa.1"
 
 homepage := Some(url("https://github.com/joost-de-vries/sbt-typescript"))
 licenses +=("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
@@ -59,4 +59,4 @@ bintrayVcsUrl := Some("git@github.com:joost-de-vries/sbt-typescript.git")
 
 scriptedSettings
 scriptedLaunchOpts += s"-Dproject.version=${version.value}"
-//scriptedBufferLog := false
+scriptedBufferLog := false

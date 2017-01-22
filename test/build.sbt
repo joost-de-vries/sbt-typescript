@@ -2,19 +2,26 @@
 
 
 lazy val root = (project in file(".")).enablePlugins(SbtWeb)
+  .aggregate(web, common)
 
-JsEngineKeys.engineType := JsEngineKeys.EngineType.Node
+lazy val common = (project in file("modules/common"))
+  .enablePlugins(SbtWeb)
+  .settings(commonSettings)
 
-logLevel in typescript := Level.Debug
+lazy val web = (project in file("modules/web"))
+  .enablePlugins(SbtWeb)
+  .settings(commonSettings)
+  .dependsOn(common)
 
-assertCompilation in typescript := true
-
-
-jasmineFilter in jasmine := GlobFilter("*Test.js") | GlobFilter("*Spec.js") | GlobFilter("*.spec.js")
-logLevel in jasmine := Level.Info
-
-libraryDependencies ++= Seq(
-  "org.webjars.npm" % "types__jasmine" % "2.5.40"
+lazy val commonSettings = Seq(
+  JsEngineKeys.engineType := JsEngineKeys.EngineType.Node,
+  logLevel in typescript := Level.Debug,
+  assertCompilation in typescript := true,
+  resolveFromWebjarsNodeModulesDir := true,
+  excludeFilter in Assets := (excludeFilter in Assets).value || "*.ts"
 )
 
-resolveFromWebjarsNodeModulesDir := true
+libraryDependencies ++= Seq(
+)
+
+

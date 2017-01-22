@@ -97,8 +97,8 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
         taskMessage in TestAssets := "Typescript test compiling"
       )
   ) ++ SbtJsTask.addJsSourceFileTasks(typescript) ++ Seq(
-    typescript in Assets := (typescript in Assets).dependsOn(webJarsNodeModules in Assets).value,
-    typescript in TestAssets := (typescript in TestAssets).dependsOn(webJarsNodeModules in TestAssets).value
+    typescript in Assets := (typescript in Assets).dependsOn(webModules in Assets).value,
+    typescript in TestAssets := (typescript in TestAssets).dependsOn(webModules in TestAssets).value
   )
 
   def typescriptUnscopedSettings(config: Configuration) = {
@@ -135,8 +135,8 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
         ),
         "tsCodesToIgnore" -> JsArray(tsCodesToIgnore.value.toVector.map(JsNumber(_))),
         "nodeModulesDirs" -> toJsArray(
-          mainDir = (webJarsNodeModulesDirectory in Assets).value.getAbsolutePath,
-          testDir = (webJarsNodeModulesDirectory in TestAssets).value.getAbsolutePath),
+          mainDir = ((webJarsDirectory in Assets).value / "lib" ).getAbsolutePath,
+          testDir = ((webJarsDirectory in TestAssets).value / "lib").getAbsolutePath),
         "resolveFromNodeModulesDir" -> JsBoolean(resolveFromWebjarsNodeModulesDir.value),
         "runMode" -> JsString(getCompileMode.value.toString),
         "assertCompilation" -> JsBoolean(assertCompilation.value)
