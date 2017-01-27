@@ -1,5 +1,6 @@
 "use strict";
 var path = require("path");
+require("es6-shim");
 var Logger = (function () {
     function Logger(logLevel) {
         this.logLevel = logLevel;
