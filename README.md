@@ -27,7 +27,7 @@ I've made an activator tutorial template to get you started. If you have activat
 Create a `tsconfig.json` file in the root of your project with the required [compiler options](https://github.com/Microsoft/TypeScript/wiki/Compiler-Options).  
 Add the following line to your `project\plugins.sbt`:
 
-    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.3.0-beta.8")
+    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.3.0-beta.10")
 
 If your project is not a Play application it will have to enable `sbt-web` in `build.sbt`:
 
@@ -65,6 +65,9 @@ The following `tsc` compiler options are managed by `sbt-typescript` so setting 
 If you use the `stage` compile mode the `outFile` option is also managed by `sbt-typescript`.  
 
 ##release notes
+
+#### v0.3.0-beta.10
+- upgrade to ts 2.2.1
 
 #### v0.4.0-alfa.1
 - supports multi project builds. Uses sbt-web webModules for js deps resolution instead of nodeModules. 
