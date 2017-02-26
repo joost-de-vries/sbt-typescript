@@ -3,6 +3,7 @@
     "module":"commonjs",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "noEmitOnError": true
+    "noEmitOnError": true,
+    "lib": ["es6","dom"]
   }
 }

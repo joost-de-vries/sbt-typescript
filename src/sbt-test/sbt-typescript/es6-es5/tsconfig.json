@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target":"ES5",
-    "outDir": "target/ts"
+    "outDir": "target/ts",
+    "lib": ["es6"]
   }
 }

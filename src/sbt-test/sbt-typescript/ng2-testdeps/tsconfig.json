@@ -4,6 +4,7 @@
     "module": "system",
     "emitDecoratorMetadata": true,
     "experimentalDecorators":true,
-    "outDir": "./target/ts"
+    "outDir": "./target/ts",
+    "lib": "es6"
   }
 }
