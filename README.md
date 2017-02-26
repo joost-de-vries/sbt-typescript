@@ -68,6 +68,7 @@ If you use the `stage` compile mode the `outFile` option is also managed by `sbt
 
 #### v0.3.0-beta.10
 - upgrade to ts 2.2.1
+- [fixes running on Trireme](https://github.com/joost-de-vries/sbt-typescript/issues/19) Tx [VeryBueno](https://github.com/VeryBueno)!
 
 #### v0.4.0-alfa.1
 - supports multi project builds. Uses sbt-web webModules for js deps resolution instead of nodeModules. 
