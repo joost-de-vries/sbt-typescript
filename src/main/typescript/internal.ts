@@ -1,6 +1,7 @@
 
 /** this file contains code that has no dependencies on external modules */
 const path = require("path")
+require("es6-shim")
 
 class Logger {
     public isDebug:boolean
