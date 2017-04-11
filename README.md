@@ -69,6 +69,10 @@ If you use the `stage` compile mode the `outFile` option is also managed by `sbt
 
 ## release notes
 
+#### v0.3.0-beta.11
+- upgrade to ts 2.3.0
+- fixes readme. Tx [camilosampedro](https://github.com/camilosampedro)
+
 #### v0.3.0-beta.10
 - upgrade to ts 2.2.1
 - [fixes running on Trireme](https://github.com/joost-de-vries/sbt-typescript/issues/19) Tx [VeryBueno](https://github.com/VeryBueno)!

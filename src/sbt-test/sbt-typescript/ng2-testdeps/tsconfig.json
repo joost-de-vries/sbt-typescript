@@ -5,6 +5,6 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators":true,
     "outDir": "./target/ts",
-    "lib": "es6"
+    "lib": ["es6","dom"]
   }
 }

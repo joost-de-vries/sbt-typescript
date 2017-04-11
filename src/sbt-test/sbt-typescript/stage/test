@@ -1,6 +1,6 @@
 # check handling of outFile setting
 
-> webStage -DtsCompileMode="stage"
+> "webStage -DtsCompileMode=stage"
 
 $ exists target/web/public/main/main.js
 $ absent target/web/public/main/javascripts/greeter.js
