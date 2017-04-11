@@ -5,7 +5,6 @@ cache:
   directories:
   - $HOME/.ivy2/cache
   - $HOME/.sbt/boot/
-node_js: "node"
 jdk: oraclejdk7
 script:
   - sbt "scripted sbt-typescript/ignoreCanNotFindModule"
