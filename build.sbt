@@ -43,6 +43,7 @@ dependencyOverrides ++= Set(
 )
 
 resolvers ++= Seq(
+  Resolver.bintrayRepo("webjars","maven"),
   Resolver.typesafeRepo("releases"),
   Resolver.sbtPluginRepo("releases"),
   Resolver.sonatypeRepo("releases"),
