@@ -69,6 +69,10 @@ If you use the `stage` compile mode the `outFile` option is also managed by `sbt
 
 ## release notes
 
+#### v2.3.1
+- upgrade to ts 2.3 final: npm 2.3.1
+- sbt-typescript follows the typescript version
+
 #### v0.3.0-beta.11
 - upgrade to ts 2.3.0
 - fixes readme. Tx [camilosampedro](https://github.com/camilosampedro)
