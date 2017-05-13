@@ -4,7 +4,7 @@
 
 This sbt plugin compiles the Typescript code in your Play application to javascript fit for consumption by your average browser and device. It's especially aimed at Angular2 applications.  
 
-###Getting started
+### Getting started
 The easiest way to get started is to use the [Play - Angular2 - Typescript demo project](https://github.com/joost-de-vries/play-angular2-typescript).
 See the [Typescript 2.0 Handbook](https://github.com/Microsoft/TypeScript-Handbook/blob/master/pages/Compiler%20Options.md) for `tsc` options to use in your `tsconfig.json`.
   
@@ -68,6 +68,9 @@ The following `tsc` compiler options are managed by `sbt-typescript` so setting 
 If you use the `stage` compile mode the `outFile` option is also managed by `sbt-typescript`.  
 
 ## release notes
+
+#### v2.3.2
+- upgrade to ts npm 2.3.2
 
 #### v2.3.1
 - upgrade to ts 2.3 final: npm 2.3.1
