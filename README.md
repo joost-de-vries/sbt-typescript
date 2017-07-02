@@ -5,32 +5,14 @@
 This sbt plugin compiles the Typescript code in your Play application to javascript fit for consumption by your average browser and device. It's especially aimed at Angular2 applications.  
 
 ### Getting started
-The easiest way to get started is to use the [Play - Angular2 - Typescript demo project](https://github.com/joost-de-vries/play-angular2-typescript).
+The easiest way to get started is to use the dem projects for [Angular2](https://github.com/joost-de-vries/play-angular2-typescript) or [React](https://github.com/joost-de-vries/play-reactjs-typescript). You can create the Angular2 application locally by running `sbt new joost-de-vries/play-angular-typescript.g8`. The React application is hasn't been ported to g8 yet so you'll have to clone it.  
 See the [Typescript 2.0 Handbook](https://github.com/Microsoft/TypeScript-Handbook/blob/master/pages/Compiler%20Options.md) for `tsc` options to use in your `tsconfig.json`.
-  
-### Features
-The aim of this plugin is to make it easy to write Angular2 applications using the Play framework.  
-As such it
- - [x] allows transpiling to a single output file. This is important for large applications. At least for as long as http2 isn't prevalent.
- - [x] uses the standard `tsconfig.json` file for configuration. 
-  - Most editors and IDEs use this file to resolve types in the typescript code you're writing. 
-  - Also it allows setting of all `tsc` options. Even the undocumented ones. 
-  - And it allows you to switch between `sbt-typescript` and `tsc`.
- - [x] allows resolution of module imports against webjars. Since every Angular2 application uses ES6 module imports this is obviously an important requirement.
- - [x] ~~allows for including typings files in the build. This is essential for compilation to ES5 because the standard ES5 lib doesn't have some types that f.i. Angular2 needs. These types are offered for ES5 by ao ES6-shims.~~  Typings are obsolete: thankfully typescript type definitions are delivered now by plain npm.
- - [x] allows for suppression of compilation errors. This may seem strange to people coming from conventional statically typed languages. But the `tsc` lives in an untyped world. So it _will_ emit perfectly functional code even if some types can't be checked. Suppression of a specific error is particularly useful if one's using a library for which type information is not available. 
- - [x] supports writing unittests in typescript
- - [x] uses Typescript 2.0
- - [x] JS parts are written in Typescript.
- 
-### getting started with Typescript and Angular2
-I've made an activator tutorial template to get you started. If you have activator installed you can run `activator new play-angular2-typescript`.  Or you can just clone the [repo](https://github.com/joost-de-vries/play-angular2-typescript).  
- 
+   
 ### Configuring
 Create a `tsconfig.json` file in the root of your project with the required [compiler options](https://github.com/Microsoft/TypeScript/wiki/Compiler-Options).  
 Add the following line to your `project\plugins.sbt`:
 
-    addSbtPlugin("name.de-vries" % "sbt-typescript" % "0.3.0-beta.10")
+    addSbtPlugin("name.de-vries" % "sbt-typescript" % "2.4.1")
 
 If your project is not a Play application it will have to enable `sbt-web` in `build.sbt`:
 
@@ -68,6 +50,9 @@ The following `tsc` compiler options are managed by `sbt-typescript` so setting 
 If you use the `stage` compile mode the `outFile` option is also managed by `sbt-typescript`.  
 
 ## release notes
+
+#### v2.4.1
+- upgrade to ts npm 2.4.1
 
 #### v2.3.2
 - upgrade to ts npm 2.3.2
