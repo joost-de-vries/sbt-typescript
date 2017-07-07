@@ -49,7 +49,16 @@ The following `tsc` compiler options are managed by `sbt-typescript` so setting 
  - `rootDir`.  
 If you use the `stage` compile mode the `outFile` option is also managed by `sbt-typescript`.  
 
+### override tsconfig.json for test code
+
+    (projectTestFile in typescript) := Some("tsconfig.test.json")
+
+Any settings in that file will override those in `tsconfig.json`  
+
 ## release notes
+
+#### v2.4.1-1
+- allow for overrides of the tsconfig.json for test code
 
 #### v2.4.1
 - upgrade to ts npm 2.4.1

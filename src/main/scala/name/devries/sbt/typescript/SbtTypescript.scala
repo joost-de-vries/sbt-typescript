@@ -41,6 +41,9 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     val projectFile = SettingKey[File]("typescript-projectfile",
       "The location of the tsconfig.json  Default: <basedir>/tsconfig.json")
 
+    val projectTestFile = SettingKey[Option[String]]("typescript-test-projectfile",
+      "The location of the tsconfig.json for test code.  For instance: <basedir>/tsconfig.test.json")
+
     val typingsFile = SettingKey[Option[File]]("typescript-typings-file", "A file that refers to typings that the build needs. Default None.")
 
     val tsCodesToIgnore = SettingKey[List[Int]]("typescript-codes-to-ignore",
@@ -78,6 +81,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     // default settings
     tsCodesToIgnore := List.empty[Int],
     projectFile := baseDirectory.value / "tsconfig.json",
+    projectTestFile in Assets := None, //baseDirectory.value / "tsconfig.test.json",
     typingsFile := None,
     resolveFromWebjarsNodeModulesDir := false,
     logLevel in typescript := Level.Info,
@@ -184,16 +188,27 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       JsonParser(removeComments(content))
     }
 
-    val tsConfigFile = projectFile.value
+    def fixJson(tsConfigFile:File)={
+      val tsConfigObject = parseJson(tsConfigFile).asJsObject
+      val newTsConfigObject = for {
+        coJsValue <- tsConfigObject.fields.get("compilerOptions") if getCompileMode.value == CompileMode.Stage
 
-    val tsConfigObject = parseJson(tsConfigFile).asJsObject
-    val newTsConfigObject = for {
-      coJsValue <- tsConfigObject.fields.get("compilerOptions") if getCompileMode.value == CompileMode.Stage
+        co = coJsValue.asJsObject
+        newCo = JsObject(co.fields - "outDir" ++ Map("outFile" -> JsString(outFile.value)))
+      } yield JsObject(tsConfigObject.fields ++ Map("compilerOptions" -> newCo))
+      newTsConfigObject.getOrElse(tsConfigObject)
 
-      co = coJsValue.asJsObject
-      newCo = JsObject(co.fields - "outDir" ++ Map("outFile" -> JsString(outFile.value)))
-    } yield JsObject(tsConfigObject.fields ++ Map("compilerOptions" -> newCo))
-    newTsConfigObject.getOrElse(tsConfigObject)
+    }
+    val defaultTsConfig =fixJson(projectFile.value)
+
+    val testTsConfigOverrides = projectTestFile.value
+      .map(fileName =>baseDirectory.value / fileName)
+      .map{file => parseJson(file).asJsObject
+      }
+    testTsConfigOverrides.map{
+      overrides => new JsObject(defaultTsConfig.fields ++ overrides.fields)
+    }
+      .getOrElse(defaultTsConfig)
   }
 
   def getCompileModeTask = Def.task {
