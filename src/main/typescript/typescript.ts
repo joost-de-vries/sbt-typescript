@@ -48,6 +48,7 @@ function compile(sourceMaps: SourceMappings, sbtOptions: SbtTypescriptOptions, t
         if (sbtOptions.resolveFromNodeModulesDir) {
             nodeModulesPaths = nodeModulesPaths.concat(sbtOptions.nodeModulesDirs.map(p => p + "/*"))
             nodeModulesPaths = nodeModulesPaths.concat(sbtOptions.nodeModulesDirs.map(p => p + "/@types/*"))
+            compilerOptions.typeRoots = sbtOptions.nodeModulesDirs.map(p => p + "/@types")
         }
 
         const assetPaths = sbtOptions.assetsDirs.map(p => p + "/*")

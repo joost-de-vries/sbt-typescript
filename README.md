@@ -12,7 +12,7 @@ See the [Typescript 2.0 Handbook](https://github.com/Microsoft/TypeScript-Handbo
 Create a `tsconfig.json` file in the root of your project with the required [compiler options](https://github.com/Microsoft/TypeScript/wiki/Compiler-Options).  
 Add the following line to your `project\plugins.sbt`:
 
-    addSbtPlugin("name.de-vries" % "sbt-typescript" % "2.4.1")
+    addSbtPlugin("name.de-vries" % "sbt-typescript" % "2.4.1-2")
 
 If your project is not a Play application it will have to enable `sbt-web` in `build.sbt`:
 
@@ -56,6 +56,10 @@ If you use the `stage` compile mode the `outFile` option is also managed by `sbt
 Any settings in that file will override those in `tsconfig.json`  
 
 ## release notes
+
+#### v2.4.1-2
+- upgrade to sbt-js-engine 1.2.1 and sbt-web 1.4.1
+- add correct typeRoots values to tsconfig.json for resolution of @types type def dependencies
 
 #### v2.4.1-1
 - allow for overrides of the tsconfig.json for test code
