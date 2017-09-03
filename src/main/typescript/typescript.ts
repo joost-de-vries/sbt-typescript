@@ -355,7 +355,7 @@ function parseDiagnostic(d: Diagnostic): Problem {
     let lineCol = {line: 0, character: 0}
     let fileName = "tsconfig.json"
     let lineText = ""
-    if (d.file) {
+    if (d.file&&d.start) {
         lineCol = d.file.getLineAndCharacterOfPosition(d.start)
 
         let lineStart = d.file.getLineStarts()[lineCol.line]

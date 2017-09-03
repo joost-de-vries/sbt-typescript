@@ -1,7 +1,7 @@
 lazy val root = Project("plugins", file(".")).dependsOn(plugin)
 
 
-addSbtPlugin("name.de-vries" % "sbt-jasmine" % "0.0.1SNAPSHOT")
+addSbtPlugin("name.de-vries" % "sbt-jasmine" % "0.0.3")
 
 lazy val plugin = file("../").getCanonicalFile.toURI
 //logLevel := Level.Debug

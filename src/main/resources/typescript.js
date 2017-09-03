@@ -140,6 +140,7 @@ function replaceFileExtension(file, ext) {
     var oldExt = path.extname(file);
     return file.substring(0, file.length - oldExt.length) + ext;
 }
+Object.defineProperty(exports, "__esModule", { value: true });
 var typescript_1 = require("typescript");
 var fs = require("fs-extra");
 var args = parseArgs(process.argv);
@@ -165,8 +166,7 @@ function compile(sourceMaps, sbtOptions, target) {
         if (sbtOptions.resolveFromNodeModulesDir) {
             nodeModulesPaths = nodeModulesPaths.concat(sbtOptions.nodeModulesDirs.map(function (p) { return p + "/*"; }));
             nodeModulesPaths = nodeModulesPaths.concat(sbtOptions.nodeModulesDirs.map(function (p) { return p + "/@types/*"; }));
-            compilerOptions.typeRoots = sbtOptions.nodeModulesDirs.map(function(p) { return p + "/@types";});
-
+            compilerOptions.typeRoots = sbtOptions.nodeModulesDirs.map(function (p) { return p + "/@types"; });
         }
         var assetPaths = sbtOptions.assetsDirs.map(function (p) { return p + "/*"; });
         compilerOptions.baseUrl = ".";
@@ -422,7 +422,7 @@ function parseDiagnostic(d) {
     var lineCol = { line: 0, character: 0 };
     var fileName = "tsconfig.json";
     var lineText = "";
-    if (d.file) {
+    if (d.file && d.start) {
         lineCol = d.file.getLineAndCharacterOfPosition(d.start);
         var lineStart = d.file.getLineStarts()[lineCol.line];
         var lineEnd = d.file.getLineStarts()[lineCol.line + 1];

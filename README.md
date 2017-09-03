@@ -73,6 +73,10 @@ If you are importing modules for which you don't have the typings you can ignore
 
 ## release notes
 
+#### v2.5.2
+- upgrade to ts 2.5.2
+- fixes issue with test tsconfig overrides
+
 #### v2.4.1-2
 - upgrade to sbt-js-engine 1.2.1 and sbt-web 1.4.1
 - add correct typeRoots values to tsconfig.json for resolution of @types type def dependencies

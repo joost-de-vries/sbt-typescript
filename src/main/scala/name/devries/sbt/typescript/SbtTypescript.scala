@@ -81,7 +81,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
     // default settings
     tsCodesToIgnore := List.empty[Int],
     projectFile := baseDirectory.value / "tsconfig.json",
-    projectTestFile in Assets := None, //baseDirectory.value / "tsconfig.test.json",
+    projectTestFile := None, //baseDirectory.value / "tsconfig.test.json",
     typingsFile := None,
     resolveFromWebjarsNodeModulesDir := false,
     logLevel in typescript := Level.Info,
@@ -188,7 +188,7 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       JsonParser(removeComments(content))
     }
 
-    def fixJson(tsConfigFile:File)={
+    def fixJson(tsConfigFile: File) = {
       val tsConfigObject = parseJson(tsConfigFile).asJsObject
       val newTsConfigObject = for {
         coJsValue <- tsConfigObject.fields.get("compilerOptions") if getCompileMode.value == CompileMode.Stage
@@ -199,15 +199,14 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       newTsConfigObject.getOrElse(tsConfigObject)
 
     }
-    val defaultTsConfig =fixJson(projectFile.value)
 
+
+    val defaultTsConfig = fixJson(projectFile.value)
     val testTsConfigOverrides = projectTestFile.value
-      .map(fileName =>baseDirectory.value / fileName)
-      .map{file => parseJson(file).asJsObject
+      .map(fileName => baseDirectory.value / fileName)
+      .map { file => parseJson(file).asJsObject
       }
-    testTsConfigOverrides.map{
-      overrides => new JsObject(defaultTsConfig.fields ++ overrides.fields)
-    }
+    testTsConfigOverrides.map(overrides =>JsonUtil.merge(defaultTsConfig, overrides))
       .getOrElse(defaultTsConfig)
   }
 
@@ -232,4 +231,30 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
       minustypescriptMappings
   }
 
+}
+
+object JsonUtil {
+  def merge(tsConfig: JsObject, tsConfigOverride: JsObject): JsObject = {
+    val keys = tsConfig.fields.keySet ++ tsConfigOverride.fields.keySet
+    val merged = keys.map { key =>
+      (for {v1 <- tsConfig.getFields(key).headOption
+            v2 <- tsConfigOverride.getFields(key).headOption
+      } yield {
+        v2 match {
+          case JsNull => key -> JsNull
+          case v: JsString => key -> v
+          case v: JsBoolean => key -> v
+          case v: JsNumber => key -> v
+          case v: JsArray => v1 match {
+            case JsArray(elements) => key -> JsArray(elements ++ v.elements)
+            case other => throw new IllegalArgumentException(s"can't override $key with $v value with $other")
+          }
+          case v: JsObject => key -> new JsObject(v1.asJsObject.fields ++ v.fields)
+        }
+
+      }).orElse(tsConfig.getFields(key).headOption.map(key -> _)).orElse(tsConfigOverride.getFields(key).headOption.map(key -> _))
+
+    }
+    new JsObject(merged.flatten.toMap)
+  }
 }
