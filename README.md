@@ -5,7 +5,7 @@
 This sbt plugin compiles the Typescript code in your Play application to javascript fit for consumption by your average browser and device.   
 
 ### Getting started
-The easiest way to get started is to use the demo projects for [Angular2](https://github.com/joost-de-vries/play-angular2-typescript) or [React](https://github.com/joost-de-vries/play-reactjs-typescript). You can create the Angular2 application locally by running `sbt new joost-de-vries/play-angular-typescript.g8`. The React application is hasn't been ported to g8 yet so you'll have to clone it.  
+The easiest way to get started is to use the demo projects for [Angular2](https://github.com/joost-de-vries/play-angular2-typescript) or [React](https://github.com/joost-de-vries/play-reactjs-typescript). You can create the Angular2 application locally by running `sbt new joost-de-vries/play-angular-typescript.g8`. For the React application that's `sbt new joost-de-vries/play-reactjs-typescript.g8`  
    
 ### Configuring
 Create a `tsconfig.json` file in the root of your project with the required [compiler options](http://www.typescriptlang.org/docs/handbook/compiler-options.html). The following `tsc` compiler options are managed by `sbt-typescript` so setting them in `tsconfig.json` has no effect: `outDir`, `rootDirs`, `paths`, `baseUrl`, `typeRoots`.  
