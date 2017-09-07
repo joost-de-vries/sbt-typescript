@@ -220,13 +220,14 @@ object SbtTypescript extends AutoPlugin with JsonProtocol {
   }
 
   def typescriptPipeTask: Def.Initialize[Task[Pipeline.Stage]] = Def.task {
+    val s = streams.value
+    val filter = (includeFilter in typescript in Assets).value
     inputMappings =>
-
       val isTypescript: PathMapping => Boolean = {
-        case (file, path) => (includeFilter in typescript in Assets).value.accept(file)
+        case (file, path) => filter.accept(file)
       }
       val minustypescriptMappings = inputMappings.filterNot(isTypescript)
-      streams.value.log.debug(s"running typescript pipe")
+      s.log.debug(s"running typescript pipe")
 
       minustypescriptMappings
   }

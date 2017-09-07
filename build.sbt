@@ -1,18 +1,21 @@
 sbtPlugin := true
 organization := "name.de-vries"
 name := "sbt-typescript"
-version := "2.5.2"
+version := "2.5.2-1"
 
 homepage := Some(url("https://github.com/joost-de-vries/sbt-typescript"))
 licenses +=("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
 
-scalaVersion := "2.10.6"
-javacOptions ++= Seq(
-  "-source", "1.7",
-  "-target", "1.7"
-)
+scalaVersion := (CrossVersion partialVersion sbtCrossVersion.value match {
+  case Some((0, 13)) => "2.10.6"
+  case Some((1, _))  => "2.12.3"
+  case _             => sys error s"Unhandled sbt version ${sbtCrossVersion.value}"
+})
 
-incOptions := incOptions.value.withNameHashing(true)
+crossSbtVersions := Seq("0.13.16", "1.0.1")
+
+val sbtCrossVersion = sbtVersion in pluginCrossBuild
+
 updateOptions := updateOptions.value.withCachedResolution(cachedResoluton = true)
 
 scalacOptions ++= Seq(
@@ -35,7 +38,7 @@ libraryDependencies ++= Seq(
   "org.webjars.npm" % "es6-shim" % "0.35.1"
 )
 
-dependencyOverrides ++= Set(
+dependencyOverrides ++= Seq(
   "org.webjars" % "webjars-locator" % "0.32",
   "org.webjars" % "webjars-locator-core" % "0.32",
 
@@ -50,14 +53,13 @@ resolvers ++= Seq(
   Resolver.mavenLocal
 )
 
-addSbtPlugin("com.typesafe.sbt" % "sbt-js-engine" % "1.2.1")
-addSbtPlugin("com.typesafe.sbt" % "sbt-web" % "1.4.1")
+addSbtPlugin("com.typesafe.sbt" % "sbt-js-engine" % "1.2.2")
+addSbtPlugin("com.typesafe.sbt" % "sbt-web" % "1.4.2")
 
 publishMavenStyle := false
 bintrayRepository in bintray := "sbt-plugins"
 bintrayOrganization in bintray := None
 bintrayVcsUrl := Some("git@github.com:joost-de-vries/sbt-typescript.git")
 
-scriptedSettings
 scriptedLaunchOpts += s"-Dproject.version=${version.value}"
 scriptedBufferLog := false
