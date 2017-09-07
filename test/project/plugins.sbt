@@ -1,9 +1,9 @@
 lazy val root = Project("plugins", file(".")).dependsOn(plugin)
 
 
-addSbtPlugin("name.de-vries" % "sbt-jasmine" % "0.0.3")
+//addSbtPlugin("name.de-vries" % "sbt-jasmine" % "0.0.3")
 
-lazy val plugin = file("../").getCanonicalFile.toURI
+lazy val plugin = RootProject(file("../").getCanonicalFile.toURI)
 //logLevel := Level.Debug
 resolvers ++= Seq(
   Resolver.sbtPluginRepo("releases"),
