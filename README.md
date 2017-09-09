@@ -20,7 +20,7 @@ To be able to view the original Typescript code from your browser when developin
 
 Add the following line to your `project\plugins.sbt`:
 
-    addSbtPlugin("name.de-vries" % "sbt-typescript" % "2.4.1-2")
+    addSbtPlugin("name.de-vries" % "sbt-typescript" % "2.5.2-1")
 
 If your project is not a Play application you will have to enable `sbt-web` in `build.sbt`:
 
