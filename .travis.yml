@@ -13,9 +13,9 @@ env:
     - TRAVIS_SBT_VERSION=1.0.1
 
 script:
-  - ^^$TRAVIS_SBT_VERSION "scripted sbt-typescript/ignoreCanNotFindModule"
-  - ^^$TRAVIS_SBT_VERSION "scripted sbt-typescript/inlinesourcemap"
-  - ^^$TRAVIS_SBT_VERSION "scripted sbt-typescript/sourcemap"
+  - sbt ^^$TRAVIS_SBT_VERSION "scripted sbt-typescript/ignoreCanNotFindModule"
+  - sbt ^^$TRAVIS_SBT_VERSION "scripted sbt-typescript/inlinesourcemap"
+  - sbt ^^$TRAVIS_SBT_VERSION "scripted sbt-typescript/sourcemap"
 
   # Tricks to avoid unnecessary cache updates
   - find $HOME/.sbt -name "*.lock" | xargs rm
