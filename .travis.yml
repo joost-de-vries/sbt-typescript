@@ -5,11 +5,17 @@ cache:
   directories:
   - $HOME/.ivy2/cache
   - $HOME/.sbt/boot/
-jdk: oraclejdk7
+jdk: oraclejdk8
+
+env:
+  matrix:
+    - TRAVIS_SBT_VERSION=0.13.16
+    - TRAVIS_SBT_VERSION=1.0.1
+
 script:
-  - sbt "scripted sbt-typescript/ignoreCanNotFindModule"
-  - sbt "scripted sbt-typescript/inlinesourcemap"
-  - sbt "scripted sbt-typescript/sourcemap"
+  - ^^$TRAVIS_SBT_VERSION "scripted sbt-typescript/ignoreCanNotFindModule"
+  - ^^$TRAVIS_SBT_VERSION "scripted sbt-typescript/inlinesourcemap"
+  - ^^$TRAVIS_SBT_VERSION "scripted sbt-typescript/sourcemap"
 
   # Tricks to avoid unnecessary cache updates
   - find $HOME/.sbt -name "*.lock" | xargs rm
