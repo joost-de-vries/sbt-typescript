@@ -72,6 +72,9 @@ If you are importing modules for which you don't have the typings you can ignore
     
 
 ## release notes
+#### v2.6.1
+- upgrade typescript to v2.6.1
+
 #### v2.5.2-1
 - cross build to sbt 0.13.6 and 1.0.1. alpha release
 
