@@ -72,6 +72,12 @@ If you are importing modules for which you don't have the typings you can ignore
     
 
 ## release notes
+
+#### v2.6.2
+- typescript version upgrade
+- upgrade to sbt-web 1.4.3
+- webjars-locator 0.35
+
 #### v2.6.1
 - upgrade typescript to v2.6.1
 

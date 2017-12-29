@@ -1,7 +1,7 @@
 sbtPlugin := true
 organization := "name.de-vries"
 name := "sbt-typescript"
-version := "2.6.1"
+version := "2.6.2"
 
 homepage := Some(url("https://github.com/joost-de-vries/sbt-typescript"))
 licenses +=("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
@@ -39,8 +39,8 @@ libraryDependencies ++= Seq(
 )
 
 dependencyOverrides ++= Seq(
-  "org.webjars" % "webjars-locator" % "0.32",
-  "org.webjars" % "webjars-locator-core" % "0.32",
+  "org.webjars" % "webjars-locator" % "0.35",
+  "org.webjars" % "webjars-locator-core" % "0.35",
 
   "org.webjars" % "npm" % "3.9.3"
 )
@@ -54,7 +54,7 @@ resolvers ++= Seq(
 )
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-js-engine" % "1.2.2")
-addSbtPlugin("com.typesafe.sbt" % "sbt-web" % "1.4.2")
+addSbtPlugin("com.typesafe.sbt" % "sbt-web" % "1.4.3")
 
 publishMavenStyle := false
 bintrayRepository in bintray := "sbt-plugins"
